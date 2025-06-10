@@ -3,7 +3,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #1e1e1e;
+  background-color: #1e1e1e88;
   color: #cccccc;
   border-radius: 8px;
   overflow: hidden;
