@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 
 const TerminalComponent = ({ terminalId, onResize }) => {
@@ -23,10 +24,17 @@ const TerminalComponent = ({ terminalId, onResize }) => {
       fontFamily: '"FiraCode Nerd Font",Consolas, "Courier New", monospace',
       fontSize: 14,
       cursorBlink: true,
-    });
-
-    const fitAddon = new FitAddon();
-    terminal.loadAddon(fitAddon);    // Wait for the container to be properly sized before opening terminal
+    });    const fitAddon = new FitAddon();
+    terminal.loadAddon(fitAddon);
+    
+    // Load WebGL addon for better performance (with fallback)
+    try {
+      const webglAddon = new WebglAddon();
+      terminal.loadAddon(webglAddon);
+      console.log('WebGL renderer loaded successfully for terminal:', terminalId);
+    } catch (error) {
+      console.warn('WebGL renderer not supported, falling back to canvas renderer:', error);
+    }// Wait for the container to be properly sized before opening terminal
     const openTerminal = () => {
       if (terminalRef.current && terminalRef.current.offsetWidth > 0 && terminalRef.current.offsetHeight > 0) {
         try {

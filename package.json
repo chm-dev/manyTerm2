@@ -11,7 +11,12 @@
     "build:electron": "electron-builder",
     "preview": "vite preview"
   },
-  "keywords": ["electron", "terminal", "react", "flexlayout"],
+  "keywords": [
+    "electron",
+    "terminal",
+    "react",
+    "flexlayout"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
@@ -21,14 +26,16 @@
     "electron-builder": "^24.9.1",
     "vite": "^5.1.0",
     "wait-on": "^7.2.0"
-  },  "dependencies": {
+  },
+  "dependencies": {
     "@lydell/node-pty": "^1.1.0",
     "@monaco-editor/react": "^4.6.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0",
     "flexlayout-react": "^0.7.15",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@xterm/xterm": "^5.5.0",
-    "@xterm/addon-fit": "^0.10.0"
+    "react-dom": "^18.2.0"
   },
   "build": {
     "appId": "com.example.flexclaude-terminal",
