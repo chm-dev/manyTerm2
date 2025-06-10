@@ -3,7 +3,7 @@ import { Layout, Model, TabNode } from 'flexlayout-react';
 import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
 import TopBar from './components/TopBar.jsx';
-import 'flexlayout-react/style/light.css';
+import 'flexlayout-react/style/dark.css';
 import './App.css';
 
 const App = () => {
@@ -11,10 +11,11 @@ const App = () => {
   const [terminalCounter, setTerminalCounter] = useState(1);
   const [editorCounter, setEditorCounter] = useState(1);
   const [currentDragData, setCurrentDragData] = useState(null);
-  
+
   // Initial layout configuration
   const [model] = useState(() => {
-    const json = {      global: {
+    const json = {
+      global: {
         tabEnableClose: true,
         tabEnableRename: true,
         tabSetEnableClose: false,
@@ -25,30 +26,30 @@ const App = () => {
       },
       borders: [],
       layout: {
-        type: "row",
+        type: 'row',
         weight: 100,
         children: [
           {
-            type: "tabset",
+            type: 'tabset',
             weight: 70,
             children: [
               {
-                type: "tab",
-                name: "Terminal 1",
-                component: "terminal",
-                id: "terminal-1"
+                type: 'tab',
+                name: 'Terminal 1',
+                component: 'terminal',
+                id: 'terminal-1'
               }
             ]
           },
           {
-            type: "tabset",
+            type: 'tabset',
             weight: 30,
             children: [
               {
-                type: "tab",
-                name: "Editor 1",
-                component: "editor",
-                id: "editor-1"
+                type: 'tab',
+                name: 'Editor 1',
+                component: 'editor',
+                id: 'editor-1'
               }
             ]
           }
@@ -58,36 +59,40 @@ const App = () => {
     return Model.fromJson(json);
   });
 
-  const factory = (node) => {
+  const factory = node => {
     const component = node.getComponent();
     const id = node.getId();
-    
+
     switch (component) {
       case 'terminal':
-        return <TerminalComponent 
-          key={id} 
-          terminalId={id} 
-          onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
-        />;
+        return (
+          <TerminalComponent
+            key={id}
+            terminalId={id}
+            onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
+          />
+        );
       case 'editor':
         return <EditorComponent key={id} editorId={id} />;
       default:
         return <div>Unknown component: {component}</div>;
     }
-  };  const handleTerminalResize = (terminalId, cols, rows) => {
+  };
+  const handleTerminalResize = (terminalId, cols, rows) => {
     if (window.electronAPI) {
       window.electronAPI.resizeTerminal(terminalId, cols, rows);
     }
-  };  const onExternalDrag = (e) => {
+  };
+  const onExternalDrag = e => {
     console.log('onExternalDrag called:', e.dataTransfer.types);
-    
+
     // Check if this is our FlexLayout tab drag
     if (e.dataTransfer.types.includes('text/plain') && currentDragData) {
       console.log('Using stored drag data:', currentDragData);
-      
+
       // Set the drop effect
       e.dataTransfer.dropEffect = 'copy';
-      
+
       // Return the configuration for FlexLayout
       return {
         json: currentDragData,
@@ -97,9 +102,10 @@ const App = () => {
         }
       };
     }
-    
+
     return undefined;
-  };  const onUpdateCounters = (componentType, newCounter) => {
+  };
+  const onUpdateCounters = (componentType, newCounter) => {
     if (componentType === 'terminal') {
       setTerminalCounter(newCounter);
     } else if (componentType === 'editor') {
@@ -107,7 +113,7 @@ const App = () => {
     }
   };
 
-  const onStartDrag = (dragData) => {
+  const onStartDrag = dragData => {
     console.log('Setting current drag data:', dragData);
     setCurrentDragData(dragData);
   };
@@ -115,11 +121,11 @@ const App = () => {
   const addNewTerminal = () => {
     const newCounter = terminalCounter + 1;
     setTerminalCounter(newCounter);
-    
+
     layoutRef.current.addTabToActiveTabSet({
-      type: "tab",
+      type: 'tab',
       name: `Terminal ${newCounter}`,
-      component: "terminal",
+      component: 'terminal',
       id: `terminal-${newCounter}`
     });
   };
@@ -127,15 +133,18 @@ const App = () => {
   const addNewEditor = () => {
     const newCounter = editorCounter + 1;
     setEditorCounter(newCounter);
-    
+
     layoutRef.current.addTabToActiveTabSet({
-      type: "tab",
+      type: 'tab',
       name: `Editor ${newCounter}`,
-      component: "editor",
+      component: 'editor',
       id: `editor-${newCounter}`
     });
-  };  return (
-    <div className="app">      <TopBar 
+  };
+  return (
+    <div className="app">
+      {' '}
+      <TopBar
         onAddTerminal={addNewTerminal}
         onAddEditor={addNewEditor}
         layoutRef={layoutRef}
@@ -143,7 +152,8 @@ const App = () => {
         editorCounter={editorCounter}
         onUpdateCounters={onUpdateCounters}
         onStartDrag={onStartDrag}
-      /><div className="layout-container">
+      />
+      <div className="layout-container">
         <Layout
           ref={layoutRef}
           model={model}
