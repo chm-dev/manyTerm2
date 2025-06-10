@@ -54,9 +54,11 @@ const TerminalComponent = ({ terminalId, onResize }) => {
     openTerminal();
 
     xtermRef.current = terminal;
-    fitAddonRef.current = fitAddon;// Set up event handlers
+    fitAddonRef.current = fitAddon;    // Set up event handlers
     let dataHandler = null;
     let exitHandler = null;
+    let dataListener = null;
+    let exitListener = null;
     let inputDisposable = null;
 
     if (window.electronAPI) {
@@ -73,9 +75,9 @@ const TerminalComponent = ({ terminalId, onResize }) => {
         }
       };
 
-      // Set up listeners
-      window.electronAPI.onTerminalData(dataHandler);
-      window.electronAPI.onTerminalExit(exitHandler);      // Create terminal in main process first
+      // Set up listeners and store the actual listener functions for proper cleanup
+      dataListener = window.electronAPI.onTerminalData(dataHandler);
+      exitListener = window.electronAPI.onTerminalExit(exitHandler);// Create terminal in main process first
       window.electronAPI.createTerminal(terminalId).then(() => {
         console.log('Terminal created successfully:', terminalId);
         setIsReady(true);
@@ -132,10 +134,16 @@ const TerminalComponent = ({ terminalId, onResize }) => {
       if (window.electronAPI) {
         console.log('Closing terminal in main process:', terminalId);
         window.electronAPI.closeTerminal(terminalId);
-        // Note: We don't have a way to remove specific listeners, 
-        // so we'll remove all listeners for these events
-        window.electronAPI.removeAllListeners('terminal-data');
-        window.electronAPI.removeAllListeners('terminal-exit');
+        
+        // Remove only the specific listeners for this terminal
+        if (dataListener) {
+          console.log('Removing data listener for:', terminalId);
+          window.electronAPI.removeListener('terminal-data', dataListener);
+        }
+        if (exitListener) {
+          console.log('Removing exit listener for:', terminalId);
+          window.electronAPI.removeListener('terminal-exit', exitListener);
+        }
       }
       if (terminal) {
         console.log('Disposing terminal instance:', terminalId);

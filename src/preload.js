@@ -7,20 +7,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resizeTerminal: (terminalId, cols, rows) => ipcRenderer.invoke('resize-terminal', terminalId, cols, rows),
   closeTerminal: (terminalId) => ipcRenderer.invoke('close-terminal', terminalId),
   
-  // Terminal event listeners
+  // Terminal event listeners with proper cleanup support
   onTerminalData: (callback) => {
-    ipcRenderer.on('terminal-data', (event, terminalId, data) => {
+    const wrappedCallback = (event, terminalId, data) => {
       callback(terminalId, data);
-    });
+    };
+    ipcRenderer.on('terminal-data', wrappedCallback);
+    return wrappedCallback; // Return the actual listener function for removal
   },
   
   onTerminalExit: (callback) => {
-    ipcRenderer.on('terminal-exit', (event, terminalId) => {
+    const wrappedCallback = (event, terminalId) => {
       callback(terminalId);
-    });
+    };
+    ipcRenderer.on('terminal-exit', wrappedCallback);
+    return wrappedCallback; // Return the actual listener function for removal
   },
   
-  // Remove listeners
+  // Remove specific listeners
+  removeListener: (channel, listener) => {
+    ipcRenderer.removeListener(channel, listener);
+  },
+  
+  // Remove all listeners (kept for backward compatibility)
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   }
