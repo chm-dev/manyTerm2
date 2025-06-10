@@ -1,0 +1,76 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e1e;
+  color: #cccccc;
+}
+
+.toolbar {
+  height: 40px;
+  background-color: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.toolbar-button {
+  background-color: #0e639c;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.toolbar-button:hover {
+  background-color: #1177bb;
+}
+
+.layout-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* FlexLayout theme customization */
+.flexlayout__layout {
+  background-color: #1e1e1e !important;
+}
+
+.flexlayout__tab {
+  background-color: #2d2d30 !important;
+  color: #cccccc !important;
+  border-right: 1px solid #3e3e42 !important;
+}
+
+.flexlayout__tab:hover {
+  background-color: #37373d !important;
+}
+
+.flexlayout__tab_selected {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+.flexlayout__tabset_content {
+  background-color: #1e1e1e !important;
+}
+
+.flexlayout__tabset_header {
+  background-color: #2d2d30 !important;
+  border-bottom: 1px solid #3e3e42 !important;
+}
+
+.flexlayout__splitter {
+  background-color: #3e3e42 !important;
+}
+
+.flexlayout__splitter:hover {
+  background-color: #007acc !important;
+}
