@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 
-const EditorComponent = ({ editorId }) => {
+const EditorComponent = ({ editorId, registerFocusable, unregisterFocusable }) => {
   const [code, setCode] = useState('// Welcome to FlexClaude Terminal Editor\n// Start typing your code here...\n\nfunction hello() {\n  console.log("Hello, World!");\n}\n\nhello();');
   const [language, setLanguage] = useState('javascript');
   const editorRef = useRef(null);
@@ -59,9 +59,27 @@ const EditorComponent = ({ editorId }) => {
     handleLayoutResize();
 
     return () => {
-      window.removeEventListener('resize', handleLayoutResize);
-    };
+      window.removeEventListener('resize', handleLayoutResize);    };
   }, []);
+
+  // Register/unregister with focus manager
+  useEffect(() => {
+    if (registerFocusable && editorRef.current) {
+      const focusFunction = () => {
+        if (editorRef.current) {
+          editorRef.current.focus();
+        }
+      };
+      
+      registerFocusable(editorId, focusFunction, 'editor');
+      
+      return () => {
+        if (unregisterFocusable) {
+          unregisterFocusable(editorId);
+        }
+      };
+    }
+  }, [editorId, registerFocusable, unregisterFocusable, editorRef.current]);
 
   const languages = [
     'javascript', 'typescript', 'python', 'java', 'csharp', 'cpp', 'c',

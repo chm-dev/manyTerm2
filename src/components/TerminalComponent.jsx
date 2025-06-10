@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 
-const TerminalComponent = ({ terminalId, onResize }) => {
+const TerminalComponent = ({ terminalId, onResize, registerFocusable, unregisterFocusable }) => {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const fitAddonRef = useRef(null);
@@ -158,8 +158,26 @@ const TerminalComponent = ({ terminalId, onResize }) => {
           console.warn('Error disposing terminal:', error);
         }
       }
-    };
-  }, [terminalId]);
+    };  }, [terminalId]);
+
+  // Register/unregister with focus manager
+  useEffect(() => {
+    if (registerFocusable && xtermRef.current) {
+      const focusFunction = () => {
+        if (xtermRef.current && terminalRef.current) {
+          xtermRef.current.focus();
+        }
+      };
+      
+      registerFocusable(terminalId, focusFunction, 'terminal');
+      
+      return () => {
+        if (unregisterFocusable) {
+          unregisterFocusable(terminalId);
+        }
+      };
+    }
+  }, [terminalId, registerFocusable, unregisterFocusable, isReady]);
 
   // Handle external resize (from FlexLayout changes)
   useEffect(() => {

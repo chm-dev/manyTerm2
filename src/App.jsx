@@ -3,6 +3,7 @@ import { Layout, Model, TabNode } from 'flexlayout-react';
 import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
 import TopBar from './components/TopBar.jsx';
+import { useFocusManager } from './hooks/useFocusManager.js';
 import 'flexlayout-react/style/dark.css';
 import './App.css';
 
@@ -54,11 +55,12 @@ const App = () => {
             ]
           }
         ]
-      }
-    };
+      }    };
     return Model.fromJson(json);
   });
 
+  // Initialize focus manager
+  const { registerFocusable, unregisterFocusable } = useFocusManager(model);
   const factory = node => {
     const component = node.getComponent();
     const id = node.getId();
@@ -70,10 +72,19 @@ const App = () => {
             key={id}
             terminalId={id}
             onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
+            registerFocusable={registerFocusable}
+            unregisterFocusable={unregisterFocusable}
           />
         );
       case 'editor':
-        return <EditorComponent key={id} editorId={id} />;
+        return (
+          <EditorComponent 
+            key={id} 
+            editorId={id}
+            registerFocusable={registerFocusable}
+            unregisterFocusable={unregisterFocusable}
+          />
+        );
       default:
         return <div>Unknown component: {component}</div>;
     }
