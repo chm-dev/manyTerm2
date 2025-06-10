@@ -112,8 +112,7 @@ const EditorComponent = ({ editorId }) => {
           value={code}
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
-          theme="vs-dark-custom"
-          options={{
+          theme="vs-dark-custom"          options={{
             fontSize: 14,
             fontFamily: 'Consolas, "Courier New", monospace',
             minimap: { enabled: true },
@@ -126,8 +125,7 @@ const EditorComponent = ({ editorId }) => {
             selectOnLineNumbers: true,
             roundedSelection: false,
             readOnly: false,
-            cursorStyle: 'line',
-            automaticLayout: true
+            cursorStyle: 'line'
           }}
         />
       </div>

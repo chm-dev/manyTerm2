@@ -16,7 +16,13 @@ const TopBar = ({ onAddTerminal, onAddEditor, layoutRef, terminalCounter, editor
       icon: '📝',
       description: 'Monaco Editor Component'
     }
-  ];  const handleDragStart = (e, componentType) => {
+  ];
+
+  const handleWindowControl = (action) => {
+    if (window.electronAPI) {
+      window.electronAPI.windowControl(action);
+    }
+  };const handleDragStart = (e, componentType) => {
     console.log('Drag started for:', componentType);
     setDraggedComponent(componentType);
     
@@ -64,28 +70,57 @@ const TopBar = ({ onAddTerminal, onAddEditor, layoutRef, terminalCounter, editor
     }
   };  return (
     <div className="top-bar">
-      <div className="top-bar-title">
-        FlexClaude2
+      <div className="top-bar-left">
+        <div className="top-bar-title">
+          FlexClaude2
+        </div>
+        <div className="component-buttons">
+          {componentTypes.map((component) => (
+            <div
+              key={component.type}
+              className={`component-button ${draggedComponent?.type === component.type ? 'dragging' : ''}`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, component)}
+              onDragEnd={handleDragEnd}
+              onClick={() => handleClick(component)}
+              title={`Click to add or drag to place ${component.description}`}
+            >
+              <span className="component-icon">{component.icon}</span>
+              <span className="component-name">{component.name}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="component-buttons">
-        {componentTypes.map((component) => (
-          <div
-            key={component.type}
-            className={`component-button ${draggedComponent?.type === component.type ? 'dragging' : ''}`}
-            draggable
-            onDragStart={(e) => handleDragStart(e, component)}
-            onDragEnd={handleDragEnd}
-            onClick={() => handleClick(component)}
-            title={`Click to add or drag to place ${component.description}`}
-          >
-            <span className="component-icon">{component.icon}</span>
-            <span className="component-name">{component.name}</span>
-          </div>
-        ))}
-      </div>
-      <div className="top-bar-actions">
+      
+      <div className="top-bar-center">
         <div className="drag-hint">
           💡 Drag components to layout or click to add
+        </div>
+      </div>
+      
+      <div className="top-bar-right">
+        <div className="window-controls">
+          <button 
+            className="window-control minimize"
+            onClick={() => handleWindowControl('minimize')}
+            title="Minimize"
+          >
+            ‒
+          </button>
+          <button 
+            className="window-control maximize"
+            onClick={() => handleWindowControl('maximize')}
+            title="Maximize/Restore"
+          >
+            ⬜
+          </button>
+          <button 
+            className="window-control close"
+            onClick={() => handleWindowControl('close')}
+            title="Close"
+          >
+            ✕
+          </button>
         </div>
       </div>
     </div>

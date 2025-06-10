@@ -2,21 +2,51 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const isDev = !app.isPackaged;
 const pty = require('@lydell/node-pty');
+const registerGlobalShortcuts = require('./globalShortcuts');
+const { getBounds } = require('./windowUtils');
 
 let mainWindow;
 const terminals = new Map();
+let store;
 
 function createWindow() {
+  const bounds = getBounds(store);
+  
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: false,
+    skipTaskbar: true,
+    resizable: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js')
     }
-  });  // Force development mode for now
+  });
+
+  // Register global shortcuts for quake console mode
+  registerGlobalShortcuts(mainWindow, store);
+
+  // Save window bounds when window is resized or moved
+  mainWindow.on('resize', () => {
+    if (!mainWindow.isMaximized() && store) {
+      store.set('bounds', mainWindow.getBounds());
+    }
+  });
+
+  mainWindow.on('move', () => {
+    if (!mainWindow.isMaximized() && store) {
+      store.set('bounds', mainWindow.getBounds());
+    }
+  });
+
+  // Force development mode for now
   const startUrl = 'http://localhost:5173';
     mainWindow.loadURL(startUrl);
 
@@ -33,7 +63,13 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  // Import electron-store dynamically
+  const Store = (await import('electron-store')).default;
+  store = new Store();
+  
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   // Clean up all terminals
@@ -119,4 +155,36 @@ ipcMain.handle('close-terminal', (event, terminalId) => {
   }
   console.log('Terminal not found for closing:', terminalId);
   return { success: false, error: 'Terminal not found' };
+});
+
+// Window control handlers
+ipcMain.handle('window-control', (event, action) => {
+  if (!mainWindow) {
+    return { success: false, error: 'Main window not available' };
+  }
+
+  try {
+    switch (action) {
+      case 'minimize':
+        mainWindow.minimize();
+        break;
+      case 'maximize':
+        if (mainWindow.isMaximized()) {
+          mainWindow.restore();
+        } else {
+          mainWindow.maximize();
+        }
+        break;
+      case 'close':
+        mainWindow.close();
+        break;
+      default:
+        console.log('Unknown window control action:', action);
+        return { success: false, error: 'Unknown action' };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Window control error:', error);
+    return { success: false, error: error.message };
+  }
 });

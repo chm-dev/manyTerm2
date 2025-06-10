@@ -28,9 +28,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeListener: (channel, listener) => {
     ipcRenderer.removeListener(channel, listener);
   },
-  
-  // Remove all listeners (kept for backward compatibility)
+    // Remove all listeners (kept for backward compatibility)
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
-  }
+  },
+  
+  // Window controls for frameless window
+  windowControl: (action) => ipcRenderer.invoke('window-control', action)
 });

@@ -5,6 +5,9 @@
   flex-direction: column;
   background-color: #1e1e1e;
   color: #cccccc;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Top Bar Styles */
@@ -14,12 +17,34 @@
   border-bottom: 2px solid #007acc;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 16px;
-  gap: 20px;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   position: relative;
   z-index: 1000;
+  -webkit-app-region: drag; /* Enable window dragging on the title bar */
+}
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  -webkit-app-region: no-drag; /* Disable dragging on interactive elements */
+}
+
+.top-bar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  -webkit-app-region: no-drag;
 }
 
 .top-bar-title {
@@ -76,8 +101,47 @@
   filter: grayscale(0.2);
 }
 
-.component-name {
-  font-weight: 500;
+.component-name {  font-weight: 500;
+}
+
+/* Window Controls */
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.window-control {
+  width: 46px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #cccccc;
+  font-size: 14px;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+.window-control:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.window-control.close:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+.window-control.minimize:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.window-control.maximize:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .top-bar-actions {
