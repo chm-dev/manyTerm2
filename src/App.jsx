@@ -2,16 +2,19 @@ import React, { useState, useRef } from 'react';
 import { Layout, Model, TabNode } from 'flexlayout-react';
 import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
+import TopBar from './components/TopBar.jsx';
 import 'flexlayout-react/style/light.css';
 import './App.css';
 
 const App = () => {
   const layoutRef = useRef(null);
+  const [terminalCounter, setTerminalCounter] = useState(1);
+  const [editorCounter, setEditorCounter] = useState(1);
+  const [currentDragData, setCurrentDragData] = useState(null);
   
   // Initial layout configuration
   const [model] = useState(() => {
-    const json = {
-      global: {
+    const json = {      global: {
         tabEnableClose: true,
         tabEnableRename: true,
         tabSetEnableClose: false,
@@ -71,65 +74,81 @@ const App = () => {
       default:
         return <div>Unknown component: {component}</div>;
     }
-  };
-
-  const handleTerminalResize = (terminalId, cols, rows) => {
+  };  const handleTerminalResize = (terminalId, cols, rows) => {
     if (window.electronAPI) {
       window.electronAPI.resizeTerminal(terminalId, cols, rows);
     }
+  };  const onExternalDrag = (e) => {
+    console.log('onExternalDrag called:', e.dataTransfer.types);
+    
+    // Check if this is our FlexLayout tab drag
+    if (e.dataTransfer.types.includes('text/plain') && currentDragData) {
+      console.log('Using stored drag data:', currentDragData);
+      
+      // Set the drop effect
+      e.dataTransfer.dropEffect = 'copy';
+      
+      // Return the configuration for FlexLayout
+      return {
+        json: currentDragData,
+        onDrop: (node, event) => {
+          console.log('External drag completed:', node);
+          setCurrentDragData(null); // Clear the drag data
+        }
+      };
+    }
+    
+    return undefined;
+  };  const onUpdateCounters = (componentType, newCounter) => {
+    if (componentType === 'terminal') {
+      setTerminalCounter(newCounter);
+    } else if (componentType === 'editor') {
+      setEditorCounter(newCounter);
+    }
+  };
+
+  const onStartDrag = (dragData) => {
+    console.log('Setting current drag data:', dragData);
+    setCurrentDragData(dragData);
   };
 
   const addNewTerminal = () => {
-    const terminalCount = model.getNodeById('terminal-1') ? 
-      model.toJson().layout.children.filter(child => 
-        child.children?.some(tab => tab.component === 'terminal')
-      ).reduce((count, tabset) => 
-        count + tabset.children.filter(tab => tab.component === 'terminal').length, 0
-      ) : 0;
-    
-    const newTerminalId = `terminal-${terminalCount + 1}`;
+    const newCounter = terminalCounter + 1;
+    setTerminalCounter(newCounter);
     
     layoutRef.current.addTabToActiveTabSet({
       type: "tab",
-      name: `Terminal ${terminalCount + 1}`,
+      name: `Terminal ${newCounter}`,
       component: "terminal",
-      id: newTerminalId
+      id: `terminal-${newCounter}`
     });
   };
 
   const addNewEditor = () => {
-    const editorCount = model.getNodeById('editor-1') ? 
-      model.toJson().layout.children.filter(child => 
-        child.children?.some(tab => tab.component === 'editor')
-      ).reduce((count, tabset) => 
-        count + tabset.children.filter(tab => tab.component === 'editor').length, 0
-      ) : 0;
-    
-    const newEditorId = `editor-${editorCount + 1}`;
+    const newCounter = editorCounter + 1;
+    setEditorCounter(newCounter);
     
     layoutRef.current.addTabToActiveTabSet({
       type: "tab",
-      name: `Editor ${editorCount + 1}`,
+      name: `Editor ${newCounter}`,
       component: "editor",
-      id: newEditorId
+      id: `editor-${newCounter}`
     });
-  };
-
-  return (
-    <div className="app">
-      <div className="toolbar">
-        <button onClick={addNewTerminal} className="toolbar-button">
-          + Terminal
-        </button>
-        <button onClick={addNewEditor} className="toolbar-button">
-          + Editor
-        </button>
-      </div>
-      <div className="layout-container">
+  };  return (
+    <div className="app">      <TopBar 
+        onAddTerminal={addNewTerminal}
+        onAddEditor={addNewEditor}
+        layoutRef={layoutRef}
+        terminalCounter={terminalCounter}
+        editorCounter={editorCounter}
+        onUpdateCounters={onUpdateCounters}
+        onStartDrag={onStartDrag}
+      /><div className="layout-container">
         <Layout
           ref={layoutRef}
           model={model}
           factory={factory}
+          onExternalDrag={onExternalDrag}
         />
       </div>
     </div>

@@ -7,6 +7,93 @@
   color: #cccccc;
 }
 
+/* Top Bar Styles */
+.top-bar {
+  height: 50px;
+  background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+  border-bottom: 2px solid #007acc;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1000;
+}
+
+.top-bar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-right: 20px;
+}
+
+.component-buttons {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.component-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #0e639c 0%, #1177bb 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  user-select: none;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.component-button:hover {
+  background: linear-gradient(135deg, #1177bb 0%, #1e88e5 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 99, 156, 0.4);
+}
+
+.component-button:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 6px rgba(14, 99, 156, 0.3);
+}
+
+.component-button.dragging {
+  opacity: 0.7;
+  transform: scale(0.95);
+  border-color: #007acc;
+}
+
+.component-icon {
+  font-size: 16px;
+  filter: grayscale(0.2);
+}
+
+.component-name {
+  font-weight: 500;
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.drag-hint {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Legacy toolbar styles - keeping for backward compatibility */
 .toolbar {
   height: 40px;
   background-color: #2d2d30;
@@ -36,11 +123,15 @@
 .layout-container {
   flex: 1;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 /* FlexLayout theme customization */
 .flexlayout__layout {
   background-color: #1e1e1e !important;
+  
+  z-index: 1 !important;
 }
 
 .flexlayout__tab {
