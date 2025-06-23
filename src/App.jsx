@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Layout, Model, TabNode } from 'flexlayout-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Layout, Model, TabNode, Actions } from 'flexlayout-react';
 import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
 import TopBar from './components/TopBar.jsx';
@@ -12,12 +12,13 @@ const App = () => {
   const [terminalCounter, setTerminalCounter] = useState(1);
   const [editorCounter, setEditorCounter] = useState(1);
   const [currentDragData, setCurrentDragData] = useState(null);
+  const [model, setModel] = useState(null); // Initialize model as null
+  const [editorStates, setEditorStates] = useState({}); // To store { editorId: { content: '', language: '' } }
 
-  // Initial layout configuration
-  const [model] = useState(() => {
-    const json = {
-      global: {
-        tabEnableClose: true,
+  // Default layout configuration
+  const defaultJson = {
+    global: {
+      tabEnableClose: true,
         tabEnableRename: true,
         tabSetEnableClose: false,
         tabSetEnableDrop: true,
@@ -56,12 +57,85 @@ const App = () => {
           }
         ]
       }    };
-    return Model.fromJson(json);
-  });
+    // Don't create model fromJson here yet
+  // }); REMOVE THIS
 
   // Initialize focus manager
   const { registerFocusable, unregisterFocusable } = useFocusManager(model);
+
+  useEffect(() => {
+    const loadLayout = async () => {
+      if (window.electronAPI && window.electronAPI.loadLayout) {
+        try {
+          const result = await window.electronAPI.loadLayout();
+          if (result.success && result.layoutJson) {
+            console.log('Loaded layout from store:', result.layoutJson);
+            const loadedModelJson = result.layoutJson; // Work with the raw JSON
+
+            const newEditorStates = {};
+            let maxTerm = 0;
+            let maxEdit = 0;
+
+            // Recursive function to traverse the layout JSON
+            const processNodeConfig = (node) => {
+              if (node.type === 'tab') { // In JSON, it's 'type', not getNodeType()
+                if (node.component === 'editor') {
+                  const editorId = node.id;
+                  // Ensure config exists and has the properties before trying to access them
+                  if (node.config && (node.config.editorContent !== undefined || node.config.editorLanguage !== undefined)) {
+                    newEditorStates[editorId] = {
+                      content: node.config.editorContent || '', // Default to empty string if undefined
+                      language: node.config.editorLanguage || 'javascript' // Default language
+                    };
+                  }
+                  // Extract number from name for counter
+                  const nameParts = node.name.split(' ');
+                  const num = parseInt(nameParts[nameParts.length - 1]);
+                  if (!isNaN(num) && num > maxEdit) maxEdit = num;
+
+                } else if (node.component === 'terminal') {
+                  const nameParts = node.name.split(' ');
+                  const num = parseInt(nameParts[nameParts.length - 1]);
+                  if (!isNaN(num) && num > maxTerm) maxTerm = num;
+                }
+              }
+              if (node.children) {
+                node.children.forEach(processNodeConfig);
+              }
+            };
+
+            // Start processing from the main layout children or root
+            if (loadedModelJson.layout && loadedModelJson.layout.children) {
+              loadedModelJson.layout.children.forEach(processNodeConfig);
+            } else if (loadedModelJson.layout) { // Handle cases where layout might be a single tabset/tab
+                processNodeConfig(loadedModelJson.layout)
+            }
+
+
+            setEditorStates(newEditorStates);
+            setModel(Model.fromJson(loadedModelJson)); // Create the model instance for FlexLayout
+
+            setTerminalCounter(maxTerm || 1); // Fallback to 1 if no tabs found or numbers are weird
+            setEditorCounter(maxEdit || 1);   // Fallback to 1
+            return;
+          } else if (result.error) {
+            console.error('Failed to load layout:', result.error);
+          }
+        } catch (err) {
+          console.error('Error calling loadLayout:', err);
+        }
+      }
+      // If load failed or no saved layout, use default
+      console.log('Using default layout');
+      setModel(Model.fromJson(defaultJson));
+      setTerminalCounter(1); // Reset counters for default layout
+      setEditorCounter(1);   // Reset counters for default layout
+    };
+    loadLayout();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   const factory = node => {
+    if (!model) return null; // Model might not be ready yet
     const component = node.getComponent();
     const id = node.getId();
 
@@ -78,11 +152,15 @@ const App = () => {
         );
       case 'editor':
         return (
-          <EditorComponent 
-            key={id} 
+          <EditorComponent
+            key={id}
             editorId={id}
             registerFocusable={registerFocusable}
             unregisterFocusable={unregisterFocusable}
+            initialContent={editorStates[id]?.content}
+            initialLanguage={editorStates[id]?.language}
+            onContentChange={handleEditorContentChange}
+            onLanguageChange={handleEditorLanguageChange}
           />
         );
       default:
@@ -152,6 +230,114 @@ const App = () => {
       id: `editor-${newCounter}`
     });
   };
+
+  const handleModelChange = (newModel) => {
+    if (window.electronAPI && window.electronAPI.saveLayout) {
+      // Before saving, embed editor states into the model
+      // The 'newModel' is the current model from FlexLayout's perspective
+      const jsonOutput = newModel.toJson();
+
+      // Recursive function to update config within the JSON structure
+      const updateNodeInJson = (nodeJson) => {
+        if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
+          const editorId = nodeJson.id;
+          if (editorStates[editorId]) { // If we have state for this editor
+            nodeJson.config = { ...(nodeJson.config || {}) }; // Ensure config object exists
+            nodeJson.config.editorContent = editorStates[editorId].content;
+            nodeJson.config.editorLanguage = editorStates[editorId].language;
+          }
+        }
+        if (nodeJson.children) {
+          nodeJson.children.forEach(updateNodeInJson);
+        }
+      };
+
+      // Apply the updates to the layout part of the JSON
+      if (jsonOutput.layout && jsonOutput.layout.children) {
+        jsonOutput.layout.children.forEach(updateNodeInJson);
+      } else if (jsonOutput.layout) { // Handle cases like a single tabset or tab at the root
+        updateNodeInJson(jsonOutput.layout);
+      }
+
+      // console.log('Saving layout via onModelChange with editor states:', jsonOutput);
+      window.electronAPI.saveLayout(jsonOutput);
+    }
+  };
+
+  const handleEditorContentChange = (editorId, content) => {
+    setEditorStates(prevStates => {
+      const newEditorStates = {
+        ...prevStates,
+        [editorId]: {
+          ...(prevStates[editorId] || { language: 'javascript' }), // Default language if new
+          content
+        }
+      };
+
+      // Use the 'model' state variable directly
+      if (model && window.electronAPI && window.electronAPI.saveLayout) {
+        const jsonToSave = model.toJson();
+
+        const updateNodeRecursively = (nodeJson) => {
+            if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
+                const currentTabId = nodeJson.id;
+                if (newEditorStates[currentTabId]) { // Use data from newEditorStates
+                    nodeJson.config = { ...(nodeJson.config || {}),
+                                        editorContent: newEditorStates[currentTabId].content,
+                                        editorLanguage: newEditorStates[currentTabId].language };
+                }
+            }
+            if (nodeJson.children) {
+                nodeJson.children.forEach(updateNodeRecursively);
+            }
+        };
+        if (jsonToSave.layout && jsonToSave.layout.children) { jsonToSave.layout.children.forEach(updateNodeRecursively); }
+        else if (jsonToSave.layout) { updateNodeRecursively(jsonToSave.layout); }
+
+        // console.log('Saving layout due to editor content change:', jsonToSave);
+        window.electronAPI.saveLayout(jsonToSave);
+      }
+      return newEditorStates;
+    });
+  };
+
+  const handleEditorLanguageChange = (editorId, language) => {
+    setEditorStates(prevStates => {
+      const newEditorStates = {
+        ...prevStates,
+        [editorId]: {
+          ...(prevStates[editorId] || { content: '' }), // Default content if new
+          language
+        }
+      };
+
+      // Use the 'model' state variable directly
+      if (model && window.electronAPI && window.electronAPI.saveLayout) {
+        const jsonToSave = model.toJson();
+
+        const updateNodeRecursively = (nodeJson) => {
+            if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
+                const currentTabId = nodeJson.id;
+                if (newEditorStates[currentTabId]) { // Use data from newEditorStates
+                    nodeJson.config = { ...(nodeJson.config || {}),
+                                        editorContent: newEditorStates[currentTabId].content,
+                                        editorLanguage: newEditorStates[currentTabId].language };
+                }
+            }
+            if (nodeJson.children) {
+                nodeJson.children.forEach(updateNodeRecursively);
+            }
+        };
+        if (jsonToSave.layout && jsonToSave.layout.children) { jsonToSave.layout.children.forEach(updateNodeRecursively); }
+        else if (jsonToSave.layout) { updateNodeRecursively(jsonToSave.layout); }
+
+        // console.log('Saving layout due to editor language change:', jsonToSave);
+        window.electronAPI.saveLayout(jsonToSave);
+      }
+      return newEditorStates;
+    });
+  };
+
   return (
     <div className="app">
       {' '}
@@ -165,12 +351,15 @@ const App = () => {
         onStartDrag={onStartDrag}
       />
       <div className="layout-container">
-        <Layout
-          ref={layoutRef}
-          model={model}
+        {model && (
+          <Layout
+            ref={layoutRef}
+            model={model}
           factory={factory}
           onExternalDrag={onExternalDrag}
+          onModelChange={handleModelChange}
         />
+        )}
       </div>
     </div>
   );

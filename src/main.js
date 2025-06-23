@@ -160,6 +160,33 @@ ipcMain.handle('close-terminal', (event, terminalId) => {
   return {success: false, error: 'Terminal not found'};
 });
 
+// Layout persistence handlers
+ipcMain.handle('save-layout', async (event, layoutJson) => {
+  if (store) {
+    try {
+      store.set('layout', layoutJson);
+      return {success: true};
+    } catch (error) {
+      console.error('Failed to save layout:', error);
+      return {success: false, error: error.message};
+    }
+  }
+  return {success: false, error: 'Store not initialized'};
+});
+
+ipcMain.handle('load-layout', async () => {
+  if (store) {
+    try {
+      const layoutJson = store.get('layout');
+      return {success: true, layoutJson};
+    } catch (error) {
+      console.error('Failed to load layout:', error);
+      return {success: false, error: error.message};
+    }
+  }
+  return {success: false, error: 'Store not initialized'};
+});
+
 // Window control handlers
 ipcMain.handle('window-control', (event, action) => {
   if (!mainWindow) {

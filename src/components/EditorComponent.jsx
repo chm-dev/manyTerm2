@@ -1,10 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 
-const EditorComponent = ({ editorId, registerFocusable, unregisterFocusable }) => {
-  const [code, setCode] = useState('// Welcome to FlexClaude Terminal Editor\n// Start typing your code here...\n\nfunction hello() {\n  console.log("Hello, World!");\n}\n\nhello();');
-  const [language, setLanguage] = useState('javascript');
+const EditorComponent = ({
+  editorId,
+  registerFocusable,
+  unregisterFocusable,
+  initialContent,
+  onContentChange,
+  initialLanguage,
+  onLanguageChange
+}) => {
+  const [code, setCode] = useState(initialContent !== undefined ? initialContent : '// Welcome to FlexClaude Terminal Editor\n// Start typing your code here...\n\nfunction hello() {\n  console.log("Hello, World!");\n}\n\nhello();');
+  const [language, setLanguage] = useState(initialLanguage || 'javascript');
   const editorRef = useRef(null);
+
+  // Effect to update code when initialContent changes (e.g. loading from store after component is already mounted)
+  useEffect(() => {
+    if (initialContent !== undefined && initialContent !== code) {
+      setCode(initialContent);
+    }
+  }, [initialContent]);
+
+  useEffect(() => {
+    if (initialLanguage && initialLanguage !== language) {
+      setLanguage(initialLanguage);
+    }
+  }, [initialLanguage]);
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -40,7 +61,18 @@ const EditorComponent = ({ editorId, registerFocusable, unregisterFocusable }) =
   };
 
   const handleEditorChange = (value) => {
-    setCode(value || '');
+    const newCode = value || '';
+    setCode(newCode);
+    if (onContentChange) {
+      onContentChange(editorId, newCode);
+    }
+  };
+
+  const handleLanguageChange = (newLanguage) => {
+    setLanguage(newLanguage);
+    if (onLanguageChange) {
+      onLanguageChange(editorId, newLanguage);
+    }
   };
 
   // Handle layout changes by triggering editor resize
@@ -106,7 +138,7 @@ const EditorComponent = ({ editorId, registerFocusable, unregisterFocusable }) =
         <label style={{ color: '#cccccc', fontSize: '12px' }}>Language:</label>
         <select 
           value={language} 
-          onChange={(e) => setLanguage(e.target.value)}
+          onChange={(e) => handleLanguageChange(e.target.value)}
           style={{
             backgroundColor: '#3c3c3c',
             color: '#cccccc',
