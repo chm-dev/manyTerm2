@@ -274,9 +274,9 @@ const App = () => {
         }
       };
 
-      if (layoutRef.current && window.electronAPI && window.electronAPI.saveLayout) {
-        const currentModel = layoutRef.current.getModel();
-        const jsonToSave = currentModel.toJson();
+      // Use the 'model' state variable directly
+      if (model && window.electronAPI && window.electronAPI.saveLayout) {
+        const jsonToSave = model.toJson();
 
         const updateNodeRecursively = (nodeJson) => {
             if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
@@ -311,9 +311,9 @@ const App = () => {
         }
       };
 
-      if (layoutRef.current && window.electronAPI && window.electronAPI.saveLayout) {
-        const currentModel = layoutRef.current.getModel();
-        const jsonToSave = currentModel.toJson();
+      // Use the 'model' state variable directly
+      if (model && window.electronAPI && window.electronAPI.saveLayout) {
+        const jsonToSave = model.toJson();
 
         const updateNodeRecursively = (nodeJson) => {
             if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
