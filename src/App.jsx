@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Layout, Model, TabNode } from 'flexlayout-react';
 import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
@@ -13,6 +13,7 @@ const App = () => {
   const [editorCounter, setEditorCounter] = useState(1);
   const [currentDragData, setCurrentDragData] = useState(null);
   const [model, setModel] = useState(null); // Initialize model as null
+  const [editorStates, setEditorStates] = useState({}); // To store { editorId: { content: '', language: '' } }
 
   // Default layout configuration
   const defaultJson = {
@@ -69,23 +70,53 @@ const App = () => {
           const result = await window.electronAPI.loadLayout();
           if (result.success && result.layoutJson) {
             console.log('Loaded layout from store:', result.layoutJson);
-            setModel(Model.fromJson(result.layoutJson));
-            // Update counters based on loaded layout
+            const loadedModelJson = result.layoutJson; // Work with the raw JSON
+
+            const newEditorStates = {};
             let maxTerm = 0;
             let maxEdit = 0;
-            result.layoutJson.layout.children.forEach(tabset => {
-              tabset.children.forEach(tab => {
-                if (tab.component === 'terminal') {
-                  const num = parseInt(tab.name.split(' ')[1]);
-                  if (num > maxTerm) maxTerm = num;
-                } else if (tab.component === 'editor') {
-                  const num = parseInt(tab.name.split(' ')[1]);
-                  if (num > maxEdit) maxEdit = num;
+
+            // Recursive function to traverse the layout JSON
+            const processNodeConfig = (node) => {
+              if (node.type === 'tab') { // In JSON, it's 'type', not getNodeType()
+                if (node.component === 'editor') {
+                  const editorId = node.id;
+                  // Ensure config exists and has the properties before trying to access them
+                  if (node.config && (node.config.editorContent !== undefined || node.config.editorLanguage !== undefined)) {
+                    newEditorStates[editorId] = {
+                      content: node.config.editorContent || '', // Default to empty string if undefined
+                      language: node.config.editorLanguage || 'javascript' // Default language
+                    };
+                  }
+                  // Extract number from name for counter
+                  const nameParts = node.name.split(' ');
+                  const num = parseInt(nameParts[nameParts.length - 1]);
+                  if (!isNaN(num) && num > maxEdit) maxEdit = num;
+
+                } else if (node.component === 'terminal') {
+                  const nameParts = node.name.split(' ');
+                  const num = parseInt(nameParts[nameParts.length - 1]);
+                  if (!isNaN(num) && num > maxTerm) maxTerm = num;
                 }
-              });
-            });
-            setTerminalCounter(maxTerm || 1);
-            setEditorCounter(maxEdit || 1);
+              }
+              if (node.children) {
+                node.children.forEach(processNodeConfig);
+              }
+            };
+
+            // Start processing from the main layout children or root
+            if (loadedModelJson.layout && loadedModelJson.layout.children) {
+              loadedModelJson.layout.children.forEach(processNodeConfig);
+            } else if (loadedModelJson.layout) { // Handle cases where layout might be a single tabset/tab
+                processNodeConfig(loadedModelJson.layout)
+            }
+
+
+            setEditorStates(newEditorStates);
+            setModel(Model.fromJson(loadedModelJson)); // Create the model instance for FlexLayout
+
+            setTerminalCounter(maxTerm || 1); // Fallback to 1 if no tabs found or numbers are weird
+            setEditorCounter(maxEdit || 1);   // Fallback to 1
             return;
           } else if (result.error) {
             console.error('Failed to load layout:', result.error);
@@ -121,11 +152,15 @@ const App = () => {
         );
       case 'editor':
         return (
-          <EditorComponent 
-            key={id} 
+          <EditorComponent
+            key={id}
             editorId={id}
             registerFocusable={registerFocusable}
             unregisterFocusable={unregisterFocusable}
+            initialContent={editorStates[id]?.content}
+            initialLanguage={editorStates[id]?.language}
+            onContentChange={handleEditorContentChange}
+            onLanguageChange={handleEditorLanguageChange}
           />
         );
       default:
@@ -198,8 +233,42 @@ const App = () => {
 
   const handleModelChange = (newModel) => {
     if (window.electronAPI && window.electronAPI.saveLayout) {
-      console.log('Saving layout:', newModel.toJson());
+      // Before saving, embed editor states into the model
+      newModel.visitNodes(node => {
+        if (node.getType() === 'tab' && node.getComponent() === 'editor') {
+          const editorId = node.getId();
+          const config = node.getConfig() || {};
+          if (editorStates[editorId]) {
+            config.editorContent = editorStates[editorId].content;
+            config.editorLanguage = editorStates[editorId].language;
+          }
+          node._setAttrs( {...node.getAttrs(), config }); // Update node's config
+        }
+      });
+      console.log('Saving layout with editor states:', newModel.toJson());
       window.electronAPI.saveLayout(newModel.toJson());
+    }
+  };
+
+  const handleEditorContentChange = (editorId, content) => {
+    setEditorStates(prevStates => ({
+      ...prevStates,
+      [editorId]: { ...prevStates[editorId], content }
+    }));
+    // Trigger layout save because content is part of the layout data now
+    if (layoutRef.current) {
+        handleModelChange(layoutRef.current.getModel());
+    }
+  };
+
+  const handleEditorLanguageChange = (editorId, language) => {
+    setEditorStates(prevStates => ({
+      ...prevStates,
+      [editorId]: { ...prevStates[editorId], language }
+    }));
+    // Trigger layout save
+    if (layoutRef.current) {
+        handleModelChange(layoutRef.current.getModel());
     }
   };
 
