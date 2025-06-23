@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Layout, Model, TabNode } from 'flexlayout-react';
+import { Layout, Model, TabNode, Actions } from 'flexlayout-react';
 import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
 import TopBar from './components/TopBar.jsx';
@@ -234,42 +234,108 @@ const App = () => {
   const handleModelChange = (newModel) => {
     if (window.electronAPI && window.electronAPI.saveLayout) {
       // Before saving, embed editor states into the model
-      newModel.visitNodes(node => {
-        if (node.getType() === 'tab' && node.getComponent() === 'editor') {
-          const editorId = node.getId();
-          const config = node.getConfig() || {};
-          if (editorStates[editorId]) {
-            config.editorContent = editorStates[editorId].content;
-            config.editorLanguage = editorStates[editorId].language;
+      // The 'newModel' is the current model from FlexLayout's perspective
+      const jsonOutput = newModel.toJson();
+
+      // Recursive function to update config within the JSON structure
+      const updateNodeInJson = (nodeJson) => {
+        if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
+          const editorId = nodeJson.id;
+          if (editorStates[editorId]) { // If we have state for this editor
+            nodeJson.config = { ...(nodeJson.config || {}) }; // Ensure config object exists
+            nodeJson.config.editorContent = editorStates[editorId].content;
+            nodeJson.config.editorLanguage = editorStates[editorId].language;
           }
-          node._setAttrs( {...node.getAttrs(), config }); // Update node's config
         }
-      });
-      console.log('Saving layout with editor states:', newModel.toJson());
-      window.electronAPI.saveLayout(newModel.toJson());
+        if (nodeJson.children) {
+          nodeJson.children.forEach(updateNodeInJson);
+        }
+      };
+
+      // Apply the updates to the layout part of the JSON
+      if (jsonOutput.layout && jsonOutput.layout.children) {
+        jsonOutput.layout.children.forEach(updateNodeInJson);
+      } else if (jsonOutput.layout) { // Handle cases like a single tabset or tab at the root
+        updateNodeInJson(jsonOutput.layout);
+      }
+
+      // console.log('Saving layout via onModelChange with editor states:', jsonOutput);
+      window.electronAPI.saveLayout(jsonOutput);
     }
   };
 
   const handleEditorContentChange = (editorId, content) => {
-    setEditorStates(prevStates => ({
-      ...prevStates,
-      [editorId]: { ...prevStates[editorId], content }
-    }));
-    // Trigger layout save because content is part of the layout data now
-    if (layoutRef.current) {
-        handleModelChange(layoutRef.current.getModel());
-    }
+    setEditorStates(prevStates => {
+      const newEditorStates = {
+        ...prevStates,
+        [editorId]: {
+          ...(prevStates[editorId] || { language: 'javascript' }), // Default language if new
+          content
+        }
+      };
+
+      if (layoutRef.current && window.electronAPI && window.electronAPI.saveLayout) {
+        const currentModel = layoutRef.current.getModel();
+        const jsonToSave = currentModel.toJson();
+
+        const updateNodeRecursively = (nodeJson) => {
+            if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
+                const currentTabId = nodeJson.id;
+                if (newEditorStates[currentTabId]) { // Use data from newEditorStates
+                    nodeJson.config = { ...(nodeJson.config || {}),
+                                        editorContent: newEditorStates[currentTabId].content,
+                                        editorLanguage: newEditorStates[currentTabId].language };
+                }
+            }
+            if (nodeJson.children) {
+                nodeJson.children.forEach(updateNodeRecursively);
+            }
+        };
+        if (jsonToSave.layout && jsonToSave.layout.children) { jsonToSave.layout.children.forEach(updateNodeRecursively); }
+        else if (jsonToSave.layout) { updateNodeRecursively(jsonToSave.layout); }
+
+        // console.log('Saving layout due to editor content change:', jsonToSave);
+        window.electronAPI.saveLayout(jsonToSave);
+      }
+      return newEditorStates;
+    });
   };
 
   const handleEditorLanguageChange = (editorId, language) => {
-    setEditorStates(prevStates => ({
-      ...prevStates,
-      [editorId]: { ...prevStates[editorId], language }
-    }));
-    // Trigger layout save
-    if (layoutRef.current) {
-        handleModelChange(layoutRef.current.getModel());
-    }
+    setEditorStates(prevStates => {
+      const newEditorStates = {
+        ...prevStates,
+        [editorId]: {
+          ...(prevStates[editorId] || { content: '' }), // Default content if new
+          language
+        }
+      };
+
+      if (layoutRef.current && window.electronAPI && window.electronAPI.saveLayout) {
+        const currentModel = layoutRef.current.getModel();
+        const jsonToSave = currentModel.toJson();
+
+        const updateNodeRecursively = (nodeJson) => {
+            if (nodeJson.type === 'tab' && nodeJson.component === 'editor') {
+                const currentTabId = nodeJson.id;
+                if (newEditorStates[currentTabId]) { // Use data from newEditorStates
+                    nodeJson.config = { ...(nodeJson.config || {}),
+                                        editorContent: newEditorStates[currentTabId].content,
+                                        editorLanguage: newEditorStates[currentTabId].language };
+                }
+            }
+            if (nodeJson.children) {
+                nodeJson.children.forEach(updateNodeRecursively);
+            }
+        };
+        if (jsonToSave.layout && jsonToSave.layout.children) { jsonToSave.layout.children.forEach(updateNodeRecursively); }
+        else if (jsonToSave.layout) { updateNodeRecursively(jsonToSave.layout); }
+
+        // console.log('Saving layout due to editor language change:', jsonToSave);
+        window.electronAPI.saveLayout(jsonToSave);
+      }
+      return newEditorStates;
+    });
   };
 
   return (
