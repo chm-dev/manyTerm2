@@ -34,5 +34,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   
   // Window controls for frameless window
-  windowControl: (action) => ipcRenderer.invoke('window-control', action)
+  windowControl: (action) => ipcRenderer.invoke('window-control', action),
+
+  // Layout persistence
+  saveLayout: (layoutJson) => ipcRenderer.invoke('save-layout', layoutJson),
+  loadLayout: () => ipcRenderer.invoke('load-layout')
 });

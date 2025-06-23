@@ -12,12 +12,12 @@ const App = () => {
   const [terminalCounter, setTerminalCounter] = useState(1);
   const [editorCounter, setEditorCounter] = useState(1);
   const [currentDragData, setCurrentDragData] = useState(null);
+  const [model, setModel] = useState(null); // Initialize model as null
 
-  // Initial layout configuration
-  const [model] = useState(() => {
-    const json = {
-      global: {
-        tabEnableClose: true,
+  // Default layout configuration
+  const defaultJson = {
+    global: {
+      tabEnableClose: true,
         tabEnableRename: true,
         tabSetEnableClose: false,
         tabSetEnableDrop: true,
@@ -56,12 +56,55 @@ const App = () => {
           }
         ]
       }    };
-    return Model.fromJson(json);
-  });
+    // Don't create model fromJson here yet
+  // }); REMOVE THIS
 
   // Initialize focus manager
   const { registerFocusable, unregisterFocusable } = useFocusManager(model);
+
+  useEffect(() => {
+    const loadLayout = async () => {
+      if (window.electronAPI && window.electronAPI.loadLayout) {
+        try {
+          const result = await window.electronAPI.loadLayout();
+          if (result.success && result.layoutJson) {
+            console.log('Loaded layout from store:', result.layoutJson);
+            setModel(Model.fromJson(result.layoutJson));
+            // Update counters based on loaded layout
+            let maxTerm = 0;
+            let maxEdit = 0;
+            result.layoutJson.layout.children.forEach(tabset => {
+              tabset.children.forEach(tab => {
+                if (tab.component === 'terminal') {
+                  const num = parseInt(tab.name.split(' ')[1]);
+                  if (num > maxTerm) maxTerm = num;
+                } else if (tab.component === 'editor') {
+                  const num = parseInt(tab.name.split(' ')[1]);
+                  if (num > maxEdit) maxEdit = num;
+                }
+              });
+            });
+            setTerminalCounter(maxTerm || 1);
+            setEditorCounter(maxEdit || 1);
+            return;
+          } else if (result.error) {
+            console.error('Failed to load layout:', result.error);
+          }
+        } catch (err) {
+          console.error('Error calling loadLayout:', err);
+        }
+      }
+      // If load failed or no saved layout, use default
+      console.log('Using default layout');
+      setModel(Model.fromJson(defaultJson));
+      setTerminalCounter(1); // Reset counters for default layout
+      setEditorCounter(1);   // Reset counters for default layout
+    };
+    loadLayout();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   const factory = node => {
+    if (!model) return null; // Model might not be ready yet
     const component = node.getComponent();
     const id = node.getId();
 
@@ -152,6 +195,14 @@ const App = () => {
       id: `editor-${newCounter}`
     });
   };
+
+  const handleModelChange = (newModel) => {
+    if (window.electronAPI && window.electronAPI.saveLayout) {
+      console.log('Saving layout:', newModel.toJson());
+      window.electronAPI.saveLayout(newModel.toJson());
+    }
+  };
+
   return (
     <div className="app">
       {' '}
@@ -165,12 +216,15 @@ const App = () => {
         onStartDrag={onStartDrag}
       />
       <div className="layout-container">
-        <Layout
-          ref={layoutRef}
-          model={model}
+        {model && (
+          <Layout
+            ref={layoutRef}
+            model={model}
           factory={factory}
           onExternalDrag={onExternalDrag}
+          onModelChange={handleModelChange}
         />
+        )}
       </div>
     </div>
   );
