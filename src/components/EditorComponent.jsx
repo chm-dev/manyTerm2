@@ -119,34 +119,13 @@ const EditorComponent = ({
   ];
 
   return (
-    <div style={{ 
-      width: '100%', 
-      height: '100%', 
-      display: 'flex', 
-      flexDirection: 'column',
-      backgroundColor: '#1e1e1e'
-    }}>
-      <div style={{ 
-        height: '30px', 
-        backgroundColor: '#2d2d30', 
-        borderBottom: '1px solid #3e3e42',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 10px',
-        gap: '10px'
-      }}>
-        <label style={{ color: '#cccccc', fontSize: '12px' }}>Language:</label>
+    <div className="editor-container">
+      <div className="editor-header">
+        <label>Language:</label>
         <select 
           value={language} 
           onChange={(e) => handleLanguageChange(e.target.value)}
-          style={{
-            backgroundColor: '#3c3c3c',
-            color: '#cccccc',
-            border: '1px solid #3e3e42',
-            padding: '2px 5px',
-            fontSize: '12px',
-            borderRadius: '3px'
-          }}
+          className="language-selector"
         >
           {languages.map(lang => (
             <option key={lang} value={lang}>
@@ -155,14 +134,15 @@ const EditorComponent = ({
           ))}
         </select>
       </div>
-      <div style={{ flex: 1 }}>
+      <div className="editor-wrapper">
         <Editor
           height="100%"
           language={language}
           value={code}
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
-          theme="vs-dark-custom"          options={{
+          theme="vs-dark-custom"
+          options={{
             fontSize: 14,
             fontFamily: 'Consolas, "Courier New", monospace',
             minimap: { enabled: true },

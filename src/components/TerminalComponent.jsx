@@ -208,14 +208,12 @@ const TerminalComponent = ({ terminalId, onResize, registerFocusable, unregister
   }, [terminalId, isReady, onResize]);
 
   return (
-    <div 
-      ref={terminalRef} 
-      style={{ 
-        width: '100%', 
-        height: '100%', 
-        backgroundColor: '#1e1e1e'
-      }}
-    />
+    <div className="terminal-container">
+      <div 
+        ref={terminalRef} 
+        className="terminal-wrapper"
+      />
+    </div>
   );
 };
 

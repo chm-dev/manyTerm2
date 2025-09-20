@@ -5,7 +5,7 @@ import EditorComponent from './components/EditorComponent.jsx';
 import TopBar from './components/TopBar.jsx';
 import { useFocusManager } from './hooks/useFocusManager.js';
 import 'flexlayout-react/style/dark.css';
-import './App.css';
+import './scss/style.scss';
 
 const App = () => {
   const layoutRef = useRef(null);
