@@ -110,3 +110,6 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+
+.playwright-mcp
+.playwright-mcp/*
