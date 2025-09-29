@@ -1,0 +1,344 @@
+@import "./colors.module.scss";
+// FlexClaude Terminal - Main Styles
+// ===================================
+
+// CSS Variables for theming
+
+
+:root {
+  --bg-primary    : #{$color_background};
+  --bg-secondary  : #{$color_2};
+  --text-primary  : #cccccc;
+  --text-secondary: #969696;
+  --accent-color  : #007acc;
+  --border-color  : #3e3e42;
+  --hover-bg      : #383838;
+  --selection-bg  : #264f78;
+
+
+  // Layout colors
+  --flexlayout-border    : #{$color_2};
+  --flexlayout-tab-bg    : #{$color_background};
+  --flexlayout-tab-active: #{$color_3};
+}
+
+// Base app styling
+.app {
+  width         : 100vw;
+  height        : 100vh;
+  background    : var(--bg-primary);
+  color         : var(--text-primary);
+  font-family   : 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow      : hidden;
+  display       : flex;
+  flex-direction: column;
+  position      : relative;
+
+  // When top bar is visible, normal flex layout
+  &.top-bar-visible {
+    .layout-container {
+      flex    : 1;
+      overflow: hidden;
+      position: relative;
+      z-index : 1;
+    }
+  }
+
+  // When top bar is hidden, layout takes full height
+  &.top-bar-hidden {
+    .layout-container {
+      flex    : 1;
+      height  : 100vh;
+      overflow: hidden;
+      position: relative;
+      z-index : 1;
+    }
+  }
+
+  .layout-container {
+    // Common properties for layout container
+
+    // Ensure FlexLayout takes full space
+    .flexlayout__layout {
+      background: var(--bg-primary);
+      height    : 100%;
+      position  : relative;
+      z-index   : 1;
+    }
+  }
+
+  // Custom scrollbar styling
+  ::-webkit-scrollbar {
+    width : 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background   : var(--border-color);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--text-secondary);
+    }
+  }
+}
+
+// Terminal component specific styles
+.terminal-container {
+  width     : 100%;
+  height    : 100%;
+  background: var(--terminal-bg);
+
+  .terminal-wrapper {
+    width     : 100%;
+    height    : 100%;
+    padding   : 8px;
+    box-sizing: border-box;
+  }
+}
+
+// Editor component specific styles
+.editor-container {
+  width         : 100%;
+  height        : 100%;
+  background    : var(--editor-bg);
+  display       : flex;
+  flex-direction: column;
+
+  .editor-header {
+    background   : var(--bg-secondary);
+    padding      : 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    display      : flex;
+    align-items  : center;
+    gap          : 12px;
+
+    .language-selector {
+      background   : var(--bg-primary);
+      color        : var(--text-primary);
+      border       : 1px solid var(--border-color);
+      border-radius: 4px;
+      padding      : 4px 8px;
+      font-size    : 12px;
+
+      &:focus {
+        outline     : 1px solid var(--accent-color);
+        border-color: var(--accent-color);
+      }
+    }
+  }
+
+  .editor-wrapper {
+    flex    : 1;
+    overflow: hidden;
+  }
+}
+
+// Top bar styling
+.top-bar {
+  background        : var(--bg-secondary);
+  border-bottom     : 1px solid var(--border-color);
+  padding           : 8px 12px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : space-between;
+  user-select       : none;
+  -webkit-app-region: drag;
+  height            : 40px;
+  min-height        : 40px;
+  flex-shrink       : 0;
+  position          : relative;
+  z-index           : 10;
+
+  .top-bar-left {
+    display           : flex;
+    align-items       : center;
+    gap               : 16px;
+    -webkit-app-region: no-drag;
+
+    .top-bar-title {
+      font-weight: 600;
+      font-size  : 14px;
+      color      : var(--text-primary);
+    }
+
+    .component-buttons {
+      display: flex;
+      gap    : 8px;
+
+      .component-button {
+        background   : var(--bg-primary);
+        border       : 1px solid var(--border-color);
+        color        : var(--text-primary);
+        padding      : 6px 12px;
+        border-radius: 4px;
+        font-size    : 12px;
+        cursor       : pointer;
+        transition   : all 0.2s ease;
+        display      : flex;
+        align-items  : center;
+        gap          : 6px;
+        user-select  : none;
+
+        &:hover {
+          background  : var(--hover-bg);
+          border-color: var(--accent-color);
+        }
+
+        &:active {
+          transform: translateY(1px);
+        }
+
+        &.dragging {
+          opacity  : 0.6;
+          transform: scale(0.95);
+        }
+
+        .component-icon {
+          font-size: 14px;
+        }
+
+        .component-name {
+          font-weight: 500;
+        }
+      }
+    }
+  }
+
+  .top-bar-center {
+    flex              : 1;
+    display           : flex;
+    justify-content   : center;
+    -webkit-app-region: no-drag;
+
+    .drag-hint {
+      font-size : 12px;
+      color     : var(--text-secondary);
+      font-style: italic;
+    }
+  }
+
+  .top-bar-right {
+    display           : flex;
+    align-items       : center;
+    -webkit-app-region: no-drag;
+
+    .window-controls {
+      display: flex;
+      gap    : 2px;
+
+      .window-control {
+        background     : transparent;
+        border         : none;
+        color          : var(--text-primary);
+        padding        : 6px 12px;
+        font-size      : 12px;
+        cursor         : pointer;
+        transition     : all 0.2s ease;
+        border-radius  : 2px;
+        width          : 36px;
+        height         : 28px;
+        display        : flex;
+        align-items    : center;
+        justify-content: center;
+
+        &:hover {
+          background: var(--hover-bg);
+        }
+
+        &.close:hover {
+          background: #e81123;
+          color     : white;
+        }
+
+        &.minimize:hover {
+          background: var(--accent-color);
+        }
+
+        &.maximize:hover {
+          background: var(--accent-color);
+        }
+      }
+    }
+  }
+}
+
+// Utility classes
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity  : 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity  : 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity  : 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity  : 1;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .top-bar {
+    .controls {
+      button {
+        padding  : 4px 8px;
+        font-size: 11px;
+      }
+    }
+  }
+}
+
+// Focus indicators for accessibility
+.terminal-container:focus-within,
+.editor-container:focus-within {
+  outline       : 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+// Custom FlexLayout overrides for better dark theme integration
+.flexlayout__layout {
+  position: relative !important;
+  top     : auto !important;
+  left    : auto !important;
+  right   : auto !important;
+  bottom  : auto !important;
+}
+
+.flexlayout__tab {
+  background  : var(--flexlayout-tab-bg) !important;
+  color       : var(--text-primary) !important;
+  border-color: var(--flexlayout-border) !important;
+
+  &.flexlayout__tab--selected {
+    background: var(--flexlayout-tab-active) !important;
+  }
+}
+
+.flexlayout__tabset_header {
+  background  : var(--bg-secondary) !important;
+  border-color: var(--flexlayout-border) !important;
+}

@@ -1,0 +1,49 @@
+$color_text             : #eeeeee !default;
+$color_background       : #1a181a !default;
+$color_base             : #1a181a !default;
+$color_1                : scale_color($color_base, $lightness: 2%) !default;
+$color_2                : scale_color($color_base, $lightness: 6%) !default;
+$color_3                : scale_color($color_base, $lightness: 8%) !default;
+$color_4                : scale_color($color_base, $lightness: 10%) !default;
+$color_5                : scale_color($color_base, $lightness: 15%) !default;
+$color_6                : scale_color($color_base, $lightness: 20%) !default;
+$color_drag1            : rgb(207, 232, 255) !default;
+$color_drag2            : rgb(183, 209, 181) !default;
+$color_drag1_background : rgba(128, 128, 128, 0.15) !default;
+$color_drag2_background : rgba(128, 128, 128, 0.15) !default;
+
+// Terminal specific colors
+$terminal-bg       : #000000 !default;
+$terminal-fg       : #cccccc !default;
+$terminal-cursor   : #ffffff !default;
+$terminal-selection: rgba(255, 255, 255, 0.2) !default;
+
+// Editor specific colors
+$editor-bg            : #{$color_background} !default;
+$editor-fg            : #{$color_text} !default;
+$editor-line-highlight: #292528 !default;
+
+
+:export {
+  color_text            : #{$color_text};
+  color_background      : #{$color_background};
+  color_base            : #{$color_base};
+  color_1               : #{$color_1};
+  color_2               : #{$color_2};
+  color_3               : #{$color_3};
+  color_4               : #{$color_4};
+  color_5               : #{$color_5};
+  color_6               : #{$color_6};
+  color_drag1           : #{$color_drag1};
+  color_drag2           : #{$color_drag2};
+  color_drag1_background: #{$color_drag1_background};
+  color_drag2_background: #{$color_drag2_background};
+  terminal_bg          : #{$terminal-bg};
+  terminal_fg          : #{$terminal-fg};
+  terminal_cursor      : #{$terminal-cursor};
+  terminal_selection   : #{$terminal-selection};
+  editor_bg            : #{$editor-bg};
+  editor_fg            : #{$editor-fg};
+  editor_line_highlight: #{$editor-line-highlight};
+
+}

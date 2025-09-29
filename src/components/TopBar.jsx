@@ -6,13 +6,13 @@ const TopBar = ({ onAddTerminal, onAddEditor, layoutRef, terminalCounter, editor
   const componentTypes = [
     {
       type: 'terminal',
-      name: 'Terminal',
+      name: 'terminal',
       icon: '🖥️',
       description: 'Terminal Component'
     },
     {
       type: 'editor',
-      name: 'Editor', 
+      name: 'editor', 
       icon: '📝',
       description: 'Monaco Editor Component'
     }

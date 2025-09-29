@@ -4,7 +4,6 @@ import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
 import TopBar from './components/TopBar.jsx';
 import { useFocusManager } from './hooks/useFocusManager.js';
-import 'flexlayout-react/style/dark.css';
 import './scss/style.scss';
 
 const App = () => {
@@ -14,6 +13,7 @@ const App = () => {
   const [currentDragData, setCurrentDragData] = useState(null);
   const [model, setModel] = useState(null); // Initialize model as null
   const [editorStates, setEditorStates] = useState({}); // To store { editorId: { content: '', language: '' } }
+  const [isTopBarVisible, setIsTopBarVisible] = useState(false); // Top bar hidden by default
 
   // Default layout configuration
   const defaultJson = {
@@ -37,7 +37,7 @@ const App = () => {
             children: [
               {
                 type: 'tab',
-                name: 'Terminal 1',
+                name: 'terminal',
                 component: 'terminal',
                 id: 'terminal-1'
               }
@@ -49,7 +49,7 @@ const App = () => {
             children: [
               {
                 type: 'tab',
-                name: 'Editor 1',
+                name: 'editor',
                 component: 'editor',
                 id: 'editor-1'
               }
@@ -132,6 +132,22 @@ const App = () => {
       setEditorCounter(1);   // Reset counters for default layout
     };
     loadLayout();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // Keyboard shortcut handler for Ctrl+T to toggle top bar
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.ctrlKey && event.key === 't') {
+        event.preventDefault(); // Prevent browser's default behavior
+        setIsTopBarVisible(prev => !prev);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []); // Empty dependency array ensures this runs only once on mount
 
   const factory = node => {
@@ -339,26 +355,27 @@ const App = () => {
   };
 
   return (
-    <div className="app">
-      {' '}
-      <TopBar
-        onAddTerminal={addNewTerminal}
-        onAddEditor={addNewEditor}
-        layoutRef={layoutRef}
-        terminalCounter={terminalCounter}
-        editorCounter={editorCounter}
-        onUpdateCounters={onUpdateCounters}
-        onStartDrag={onStartDrag}
-      />
+    <div className={`app ${isTopBarVisible ? 'top-bar-visible' : 'top-bar-hidden'}`}>
+      {isTopBarVisible && (
+        <TopBar
+          onAddTerminal={addNewTerminal}
+          onAddEditor={addNewEditor}
+          layoutRef={layoutRef}
+          terminalCounter={terminalCounter}
+          editorCounter={editorCounter}
+          onUpdateCounters={onUpdateCounters}
+          onStartDrag={onStartDrag}
+        />
+      )}
       <div className="layout-container">
         {model && (
           <Layout
             ref={layoutRef}
             model={model}
-          factory={factory}
-          onExternalDrag={onExternalDrag}
-          onModelChange={handleModelChange}
-        />
+            factory={factory}
+            onExternalDrag={onExternalDrag}
+            onModelChange={handleModelChange}
+          />
         )}
       </div>
     </div>

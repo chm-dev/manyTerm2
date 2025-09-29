@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
+import { editor_bg, editor_fg, editor_line_highlight } from '../scss/colors.module.scss';
+console.log('Imported colors:', { editor_bg, editor_fg, editor_line_highlight });
+
 
 const EditorComponent = ({
   editorId,
@@ -36,11 +39,11 @@ const EditorComponent = ({
       inherit: true,
       rules: [],
       colors: {
-        'editor.background': '#1e1e1e',
-        'editor.foreground': '#cccccc',
+        'editor.background': editor_bg,
+        'editor.foreground': editor_fg,
         'editorCursor.foreground': '#ffffff',
-        'editor.lineHighlightBackground': '#2d2d30',
-        'editor.selectionBackground': '#264f78',
+        'editor.lineHighlightBackground': editor_line_highlight,
+        'editor.selectionBackground': editor_line_highlight,
         'editor.inactiveSelectionBackground': '#3a3d41'
       }
     });
@@ -120,20 +123,7 @@ const EditorComponent = ({
 
   return (
     <div className="editor-container">
-      <div className="editor-header">
-        <label>Language:</label>
-        <select 
-          value={language} 
-          onChange={(e) => handleLanguageChange(e.target.value)}
-          className="language-selector"
-        >
-          {languages.map(lang => (
-            <option key={lang} value={lang}>
-              {lang.charAt(0).toUpperCase() + lang.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
+     
       <div className="editor-wrapper">
         <Editor
           height="100%"
@@ -158,6 +148,20 @@ const EditorComponent = ({
             cursorStyle: 'line'
           }}
         />
+      </div>
+       <div className="editor-header">
+        <label>Language:</label>
+        <select 
+          value={language} 
+          onChange={(e) => handleLanguageChange(e.target.value)}
+          className="language-selector"
+        >
+          {languages.map(lang => (
+            <option key={lang} value={lang}>
+              {lang.charAt(0).toUpperCase() + lang.slice(1)}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );
