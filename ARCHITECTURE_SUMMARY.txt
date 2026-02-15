@@ -1,0 +1,258 @@
+# FlexClaude Terminal - Architecture Summary
+
+## Overview
+FlexClaude Terminal is an Electron-based terminal emulator with a flexible, drag-and-drop layout system built on React and FlexLayout. It supports multiple terminals, editors, and file managers in a customizable tabbed interface.
+
+---
+
+## TERMINAL MANAGEMENT SYSTEM
+
+### 1. Terminal Spawning and Creation
+
+FILE: C:\dev\AI\FlexClaude2\src\main.js (Lines 93-130)
+
+Process:
+- Check if terminal already exists in Map
+- Determine shell based on platform: cmd.exe (Windows) or bash (Unix)
+- Spawn PTY with @lydell/node-pty
+- Initial dimensions: 80 columns × 30 rows
+- Store terminal in Map<terminalId, ptyProcess>
+- Set up event handlers for data and exit
+
+Shell Configuration:
+  name: 'xterm-color'
+  cwd: process.env.HOMEPATH
+  env: process.env (inherited from parent)
+
+### 2. Terminal Identification and Tracking
+
+IDENTIFICATION SCHEME: String-based IDs like "terminal-1", "terminal-2"
+
+STORAGE LOCATIONS:
+- Main Process: const terminals = new Map() at line 11
+- Frontend: terminalCounter state in App.jsx for generation
+- Persistence: Layout JSON includes terminal IDs in tab definitions
+
+LIFECYCLE:
+1. App renders with default or saved layout
+2. TerminalComponent mounts with terminalId prop
+3. Component calls window.electronAPI.createTerminal(terminalId)
+4. Main process creates PTY and stores in Map
+5. Component receives data events and renders output
+6. On unmount/close, component calls window.electronAPI.closeTerminal(terminalId)
+
+### 3. Terminal Data Flow
+
+FROM SHELL TO FRONTEND (Lines 118-121 in main.js):
+1. PTY emits onData event
+2. Main process: mainWindow.webContents.send('terminal-data', terminalId, data)
+3. Frontend listener receives data
+4. TerminalComponent: terminal.write(data)
+5. Xterm renders output to user
+
+FROM FRONTEND TO SHELL (Lines 132-141 in main.js):
+1. User types in xterm terminal
+2. Terminal.onData event fires
+3. Frontend: window.electronAPI.writeTerminal(terminalId, data)
+4. IPC invoke 'write-terminal'
+5. Main process: terminal.write(data)
+6. PTY passes input to shell process
+
+TERMINAL EXIT (Lines 123-127 in main.js):
+1. PTY process ends
+2. PTY emits onExit event
+3. Main process: mainWindow.webContents.send('terminal-exit', terminalId)
+4. Frontend displays "[Process completed]" message
+5. Terminal removed from Map
+
+### 4. IPC Interface for Terminal Operations
+
+FILE: C:\dev\AI\FlexClaude2\src\preload.js (Lines 5-8, 11-23)
+
+EXPOSED APIs:
+
+createTerminal(terminalId)
+  -> ipcRenderer.invoke('create-terminal', terminalId)
+  -> Returns {success, existed}
+
+writeTerminal(terminalId, data)
+  -> ipcRenderer.invoke('write-terminal', terminalId, data)
+  -> Returns {success} or {success, error}
+
+resizeTerminal(terminalId, cols, rows)
+  -> ipcRenderer.invoke('resize-terminal', terminalId, cols, rows)
+  -> Returns {success} or {success, error}
+
+closeTerminal(terminalId)
+  -> ipcRenderer.invoke('close-terminal', terminalId)
+  -> Returns {success} or {success, error}
+
+onTerminalData(callback)
+  -> Listens to 'terminal-data' IPC events
+  -> Callback receives (terminalId, data)
+  -> Returns listener reference for cleanup
+
+onTerminalExit(callback)
+  -> Listens to 'terminal-exit' IPC events
+  -> Callback receives (terminalId)
+  -> Returns listener reference for cleanup
+
+removeListener(channel, listener)
+  -> Removes specific listener for cleanup
+
+MAIN PROCESS IPC HANDLERS:
+
+Handler               | File           | Lines   | Purpose
+---------------------|----------------|---------|------------------------------------------
+create-terminal      | src/main.js    | 94-130  | Spawn PTY, register event handlers
+write-terminal       | src/main.js    | 132-141 | Write input to PTY
+resize-terminal      | src/main.js    | 143-150 | Resize PTY cols/rows
+close-terminal       | src/main.js    | 152-163 | Kill process, cleanup Map entry
+save-layout          | src/main.js    | 166-177 | Persist layout JSON to store
+load-layout          | src/main.js    | 179-190 | Load layout JSON from store
+
+---
+
+## FRONTEND TERMINAL COMPONENT
+
+FILE: C:\dev\AI\FlexClaude2\src\components\TerminalComponent.jsx (221 lines)
+
+PROPS:
+- terminalId: Unique identifier string
+- onResize: Callback for terminal resize (cols, rows)
+- registerFocusable: Function to register with focus manager
+- unregisterFocusable: Function to unregister from focus manager
+
+INITIALIZATION SEQUENCE (Lines 13-162):
+
+1. Create xterm Terminal instance (Lines 17-26)
+   - Theme: dark background (#1e1e1e), light text (#cccccc)
+   - Font: FiraCode Nerd Font (fallback to Consolas)
+   - Font size: 14px
+   - Cursor blink: enabled
+
+2. Load FitAddon (Line 28)
+   - Responsive sizing addon
+
+3. Load WebglAddon with fallback (Lines 31-36)
+   - Try WebGL for GPU acceleration
+   - Fall back to canvas renderer if unavailable
+
+4. Open terminal in container (Lines 38-52)
+   - Wait for container to be sized
+   - Retry logic if container not ready
+   - Fit addon to container dimensions
+
+5. Set up event handlers (Lines 57-100)
+   - dataHandler: Route PTY data to xterm.write()
+   - exitHandler: Display completion message
+   - inputDisposable: Capture user input for PTY
+
+6. Create terminal in main process (Lines 81-100)
+   - Invoke ipcRenderer.invoke('create-terminal', terminalId)
+   - Set up input handler after creation succeeds
+   - Send initial terminal size to main process
+
+7. Set up ResizeObserver (Lines 119-122)
+   - Observe container element
+   - Trigger FitAddon when container resizes
+
+COMPONENT CLEANUP (Lines 122-161):
+- Disconnect ResizeObserver
+- Dispose input handler
+- Close terminal in main process
+- Remove IPC listeners (data and exit)
+- Dispose xterm instance (with 100ms delay)
+
+FOCUS REGISTRATION (Lines 164-180):
+- Register focus function on mount
+- Unregister on unmount
+- Allows keyboard navigation between components
+
+RESIZE HANDLING (Lines 183-208):
+- Listen to window resize events
+- Trigger FitAddon to recalculate cols/rows
+- Send new dimensions to main process
+
+---
+
+## CONFIGURATION AND STATE MANAGEMENT
+
+### 1. electron-store Setup
+
+FILE: C:\dev\AI\FlexClaude2\src\main.js (Lines 69-72)
+
+Initialize on app ready:
+  const Store = (await import('electron-store')).default;
+  store = new Store();
+
+STORED DATA:
+
+Key: 'bounds'
+- Saved on window resize (line 40-50) and move
+- Format: {width, height, x, y}
+- Purpose: Restore window size/position on launch
+
+Key: 'layout'
+- Saved by onModelChange callback (App.jsx line 310)
+- Format: Complete layout JSON from FlexLayout Model.toJson()
+- Purpose: Restore app layout and component state on launch
+
+Storage Location: Platform-dependent
+  Windows: C:\Users\[user]\AppData\Roaming\[app-name]\config.json
+  macOS:   ~/Library/Application Support/[app-name]/config.json
+  Linux:   ~/.config/[app-name]/config.json
+
+### 2. Layout Persistence System
+
+FILE: C:\dev\AI\FlexClaude2\src\App.jsx
+
+SAVING LAYOUT (Lines 281-312):
+
+Trigger: onModelChange callback from FlexLayout
+
+Process:
+1. Get current model: newModel.toJson() -> jsonOutput
+2. Traverse JSON recursively (updateNodeInJson function)
+3. For each 'editor' type tab, embed state in config:
+   - config.editorContent: Editor content string
+   - config.editorLanguage: Language identifier
+4. Send to main process: window.electronAPI.saveLayout(jsonOutput)
+5. Main process stores: store.set('layout', jsonOutput)
+
+Layout JSON Structure:
+{
+  "global": {
+    "tabEnableClose": true,
+    "tabEnableRename": true,
+    "tabSetEnableClose": false,
+    "tabSetEnableDrop": true,
+    "tabSetEnableDrag": true,
+    "borderEnableDrop": true
+  },
+  "borders": [],
+  "layout": {
+    "type": "row" | "column" | "tabset",
+    "weight": number,
+    "children": [
+      {
+        "type": "tab",
+        "name": "Terminal 1",
+        "component": "terminal",
+        "id": "terminal-1",
+        "config": {} // Editors have {editorContent, editorLanguage}
+      },
+      ...
+    ]
+  }
+}
+
+LOADING LAYOUT (Lines 68-143):
+
+Trigger: useEffect on component mount (dependency array: [])
+
+Process:
+1. Call window.electronAPI.loadLayout() -> IPC invoke
+2. Main process: store.get('layout') -> returns layoutJson
+3. Parse layout JSON:
+   - Extract editor states 

@@ -342,3 +342,62 @@
   background  : var(--bg-secondary) !important;
   border-color: var(--flexlayout-border) !important;
 }
+
+// File Manager Component Styles
+.file-manager-container {
+  height    : 100%;
+  width     : 100%;
+  overflow  : hidden;
+  background: var(--bg-primary);
+
+  // Override react-file-manager styles to match our theme
+  .file-manager {
+    background: var(--bg-primary) !important;
+    color     : var(--text-primary) !important;
+  }
+
+  // Customize file manager toolbar
+  .file-manager__toolbar {
+    background  : var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  // Customize navigation panel
+  .file-manager__nav {
+    background  : var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color       : var(--text-primary) !important;
+  }
+
+  // Customize file items
+  .file-manager__item {
+    color: var(--text-primary) !important;
+
+    &:hover {
+      background: var(--hover-bg) !important;
+    }
+
+    &.selected {
+      background: var(--selection-bg) !important;
+    }
+  }
+
+  // Customize scrollbars to match our theme
+  ::-webkit-scrollbar {
+    width : 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background   : var(--border-color);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--text-secondary);
+    }
+  }
+}

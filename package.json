@@ -29,6 +29,7 @@
     "wait-on": "^7.2.0"
   },
   "dependencies": {
+    "@cubone/react-file-manager": "^1.28.2",
     "@lydell/node-pty": "^1.1.0",
     "@monaco-editor/react": "^4.6.0",
     "@xterm/addon-fit": "^0.10.0",

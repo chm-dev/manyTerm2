@@ -1,13 +1,97 @@
-const {app, BrowserWindow, ipcMain} = require('electron');
+const {app, BrowserWindow, ipcMain, shell} = require('electron');
 const path = require('path');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const isDev = !app.isPackaged;
 const pty = require('@lydell/node-pty');
 const registerGlobalShortcuts = require('./globalShortcuts');
 const {getBounds} = require('./windowUtils');
+const shellConfigModule = require('./shellConfig');
 
 let mainWindow;
 const terminals = new Map();
 let store;
+let shellManager;
+
+/**
+ * ShellManager - Handles shell configuration, validation, and terminal spawning
+ */
+class ShellManager {
+  constructor(electronStore) {
+    this.store = electronStore;
+    this.userShellConfig = this.store.get('shells') || {};
+    this.initializeAvailableShells();
+  }
+
+  /**
+   * Initialize and validate available shells on startup
+   */
+  initializeAvailableShells() {
+    const available = shellConfigModule.listAvailableShells(this.userShellConfig);
+    console.log('Available shells:', available.map(s => `${s.name} (${s.executable})`).join(', '));
+    
+    if (available.length === 0) {
+      console.warn('Warning: No valid shells found on system!');
+    }
+  }
+
+  /**
+   * Get a shell configuration by ID or use default
+   * @param {string} shellId - The shell ID to retrieve
+   * @returns {object} Shell configuration
+   */
+  getShell(shellId) {
+    return shellConfigModule.getShellConfig(shellId, this.userShellConfig);
+  }
+
+  /**
+   * Get all available shells for UI display
+   * @returns {array} Array of available shell configurations
+   */
+  listAvailable() {
+    return shellConfigModule.listAvailableShells(this.userShellConfig);
+  }
+
+  /**
+   * Spawn a terminal with the specified shell
+   * @param {string} terminalId - The terminal ID
+   * @param {string} shellId - The shell ID to use
+   * @returns {object} PTY process or error
+   */
+  spawnTerminal(terminalId, shellId) {
+    try {
+      const shellConfig = this.getShell(shellId);
+      
+      if (!shellConfig) {
+        console.error('No valid shell configuration found');
+        return {success: false, error: 'No valid shell configuration found'};
+      }
+
+      const executable = shellConfigModule.resolveEnvVariables(shellConfig.executable);
+      const spawnOptions = shellConfigModule.getSpawnOptions(shellConfig);
+
+      console.log(`Spawning terminal ${terminalId} with ${shellConfig.name} (${executable})`);
+
+      const terminal = pty.spawn(executable, shellConfig.args, spawnOptions);
+      return {success: true, terminal};
+    } catch (error) {
+      console.error(`Failed to spawn terminal ${terminalId}:`, error.message);
+      return {success: false, error: error.message};
+    }
+  }
+
+  /**
+   * Update user shell configuration
+   * @param {object} newConfig - New shell configuration
+   */
+  updateConfig(newConfig) {
+    this.userShellConfig = newConfig;
+    if (this.store) {
+      this.store.set('shells', newConfig);
+    }
+    this.initializeAvailableShells();
+  }
+}
 
 function createWindow() {
   const bounds = getBounds(store);
@@ -69,6 +153,9 @@ app.whenReady().then(async () => {
   const Store = (await import ('electron-store')).default;
   store = new Store();
 
+  // Initialize shell manager
+  shellManager = new ShellManager(store);
+
   createWindow();
 });
 
@@ -89,8 +176,8 @@ app.on('activate', () => {
 });
 
 // Terminal management
-ipcMain.handle('create-terminal', (event, terminalId) => {
-  console.log('Creating terminal:', terminalId);
+ipcMain.handle('create-terminal', (event, terminalId, shellId) => {
+  console.log('Creating terminal:', terminalId, 'with shell:', shellId);
 
   // If terminal already exists, don't create a new one
   if (terminals.has(terminalId)) {
@@ -98,18 +185,15 @@ ipcMain.handle('create-terminal', (event, terminalId) => {
     return {success: true, existed: true};
   }
 
-  const shell = process.platform === 'win32'
-    ? 'cmd.exe'
-    : 'bash';
+  // Use shellId parameter, or fall back to default
+  const effectiveShellId = shellId || undefined;
+  const spawnResult = shellManager.spawnTerminal(terminalId, effectiveShellId);
 
-  const terminal = pty.spawn(shell, [], {
-    name: 'xterm-color',
-    cols: 80,
-    rows: 30,
-    cwd : process.env.HOMEPATH,
-    env : process.env
-  });
+  if (!spawnResult.success) {
+    return spawnResult;
+  }
 
+  const terminal = spawnResult.terminal;
   terminals.set(terminalId, terminal);
   console.log('Terminal created and stored:', terminalId);
 
@@ -125,6 +209,16 @@ ipcMain.handle('create-terminal', (event, terminalId) => {
   });
 
   return {success: true, existed: false};
+});
+
+ipcMain.handle('get-available-shells', () => {
+  try {
+    const shells = shellManager.listAvailable();
+    return {success: true, shells};
+  } catch (error) {
+    console.error('Failed to get available shells:', error);
+    return {success: false, error: error.message};
+  }
 });
 
 ipcMain.handle('write-terminal', (event, terminalId, data) => {
@@ -216,5 +310,111 @@ ipcMain.handle('window-control', (event, action) => {
   } catch (error) {
     console.error('Window control error:', error);
     return {success: false, error: error.message};
+  }
+});
+
+// File system operations for file manager
+ipcMain.handle('get-directory-contents', async (event, dirPath) => {
+  try {
+    // Default to user's home directory if no path provided
+    const targetPath = dirPath || require('os').homedir();
+    
+    console.log('Reading directory:', targetPath);
+    const entries = await fs.readdir(targetPath, { withFileTypes: true });
+    
+    const files = await Promise.all(entries.map(async (entry) => {
+      const fullPath = path.join(targetPath, entry.name);
+      const stats = await fs.stat(fullPath).catch(() => null);
+      
+      return {
+        name: entry.name,
+        isDirectory: entry.isDirectory(),
+        path: fullPath.replace(/\\/g, '/'), // Normalize path separators
+        updatedAt: stats ? stats.mtime.toISOString() : new Date().toISOString(),
+        size: entry.isFile() && stats ? stats.size : undefined
+      };
+    }));
+    
+    return { success: true, files };
+  } catch (error) {
+    console.error('Error reading directory:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('create-folder', async (event, folderPath) => {
+  try {
+    await fs.mkdir(folderPath, { recursive: true });
+    console.log('Created folder:', folderPath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-files', async (event, filePaths) => {
+  try {
+    for (const filePath of filePaths) {
+      const stats = await fs.stat(filePath);
+      if (stats.isDirectory()) {
+        await fs.rmdir(filePath, { recursive: true });
+      } else {
+        await fs.unlink(filePath);
+      }
+      console.log('Deleted:', filePath);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting files:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rename-file', async (event, oldPath, newPath) => {
+  try {
+    await fs.rename(oldPath, newPath);
+    console.log('Renamed:', oldPath, 'to', newPath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error renaming file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('open-file', async (event, filePath) => {
+  try {
+    await shell.openPath(filePath);
+    console.log('Opened file:', filePath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('download-files', async (event, filePaths) => {
+  try {
+    // For now, we'll just copy files to the Downloads folder
+    const os = require('os');
+    const downloadsPath = path.join(os.homedir(), 'Downloads');
+    
+    for (const filePath of filePaths) {
+      const fileName = path.basename(filePath);
+      const targetPath = path.join(downloadsPath, fileName);
+      
+      // Check if it's a file or directory
+      const stats = await fs.stat(filePath);
+      if (stats.isFile()) {
+        await fs.copyFile(filePath, targetPath);
+        console.log('Downloaded file to:', targetPath);
+      }
+      // For directories, we'd need to implement recursive copying
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error downloading files:', error);
+    return { success: false, error: error.message };
   }
 });

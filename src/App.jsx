@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Layout, Model, TabNode, Actions } from 'flexlayout-react';
 import TerminalComponent from './components/TerminalComponent.jsx';
 import EditorComponent from './components/EditorComponent.jsx';
+import FileManagerComponent from './components/FileManagerComponent.jsx';
 import TopBar from './components/TopBar.jsx';
 import { useFocusManager } from './hooks/useFocusManager.js';
 import './scss/style.scss';
@@ -10,6 +11,7 @@ const App = () => {
   const layoutRef = useRef(null);
   const [terminalCounter, setTerminalCounter] = useState(1);
   const [editorCounter, setEditorCounter] = useState(1);
+  const [fileManagerCounter, setFileManagerCounter] = useState(1);
   const [currentDragData, setCurrentDragData] = useState(null);
   const [model, setModel] = useState(null); // Initialize model as null
   const [editorStates, setEditorStates] = useState({}); // To store { editorId: { content: '', language: '' } }
@@ -35,12 +37,15 @@ const App = () => {
             type: 'tabset',
             weight: 70,
             children: [
-              {
-                type: 'tab',
-                name: 'terminal',
-                component: 'terminal',
-                id: 'terminal-1'
-              }
+               {
+                 type: 'tab',
+                 name: 'terminal',
+                 component: 'terminal',
+                 id: 'terminal-1',
+                 config: {
+                   shellId: 'cmd'
+                 }
+               }
             ]
           },
           {
@@ -75,6 +80,7 @@ const App = () => {
             const newEditorStates = {};
             let maxTerm = 0;
             let maxEdit = 0;
+            let maxFileManager = 0;
 
             // Recursive function to traverse the layout JSON
             const processNodeConfig = (node) => {
@@ -97,6 +103,10 @@ const App = () => {
                   const nameParts = node.name.split(' ');
                   const num = parseInt(nameParts[nameParts.length - 1]);
                   if (!isNaN(num) && num > maxTerm) maxTerm = num;
+                } else if (node.component === 'filemanager') {
+                  const nameParts = node.name.split(' ');
+                  const num = parseInt(nameParts[nameParts.length - 1]);
+                  if (!isNaN(num) && num > maxFileManager) maxFileManager = num;
                 }
               }
               if (node.children) {
@@ -116,7 +126,8 @@ const App = () => {
             setModel(Model.fromJson(loadedModelJson)); // Create the model instance for FlexLayout
 
             setTerminalCounter(maxTerm || 1); // Fallback to 1 if no tabs found or numbers are weird
-            setEditorCounter(maxEdit || 1);   // Fallback to 1
+            setEditorCounter(maxEdit || 1);
+            setFileManagerCounter(maxFileManager || 1);   // Fallback to 1
             return;
           } else if (result.error) {
             console.error('Failed to load layout:', result.error);
@@ -161,6 +172,7 @@ const App = () => {
           <TerminalComponent
             key={id}
             terminalId={id}
+            shellId={node.getConfig()?.shellId}
             onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
             registerFocusable={registerFocusable}
             unregisterFocusable={unregisterFocusable}
@@ -179,6 +191,15 @@ const App = () => {
             onLanguageChange={handleEditorLanguageChange}
           />
         );
+      case 'filemanager':
+        return (
+          <FileManagerComponent
+            key={id}
+            fileManagerId={id}
+            registerFocusable={registerFocusable}
+            unregisterFocusable={unregisterFocusable}
+          />
+        );
       default:
         return <div>Unknown component: {component}</div>;
     }
@@ -190,6 +211,31 @@ const App = () => {
   };
   const onExternalDrag = e => {
     console.log('onExternalDrag called:', e.dataTransfer.types);
+
+    // Check if this is a shell button drag
+    if (e.dataTransfer.types.includes('application/shellId')) {
+      console.log('Shell button drag detected');
+      e.dataTransfer.dropEffect = 'copy';
+
+      return {
+        json: {
+          type: 'tab',
+          name: `Terminal`,
+          component: 'terminal',
+          id: `terminal-${Date.now()}`, // Temporary ID for drag preview
+          config: {
+            shellId: e.dataTransfer.getData('application/shellId')
+          }
+        },
+        onDrop: (node, event) => {
+          console.log('Shell drag drop completed');
+          const shellId = e.dataTransfer.getData('application/shellId');
+          if (onAddSplitTerminal && shellId) {
+            onAddSplitTerminal(shellId);
+          }
+        }
+      };
+    }
 
     // Check if this is our FlexLayout tab drag
     if (e.dataTransfer.types.includes('text/plain') && currentDragData) {
@@ -215,6 +261,8 @@ const App = () => {
       setTerminalCounter(newCounter);
     } else if (componentType === 'editor') {
       setEditorCounter(newCounter);
+    } else if (componentType === 'filemanager') {
+      setFileManagerCounter(newCounter);
     }
   };
 
@@ -247,6 +295,33 @@ const App = () => {
     });
   };
 
+  const addNewFileManager = () => {
+    const newCounter = fileManagerCounter + 1;
+    setFileManagerCounter(newCounter);
+
+    layoutRef.current.addTabToActiveTabSet({
+      type: 'tab',
+      name: `File Manager ${newCounter}`,
+      component: 'filemanager',
+      id: `filemanager-${newCounter}`
+    });
+  };
+
+  const addSplitTerminal = (shellId) => {
+    const newCounter = terminalCounter + 1;
+    setTerminalCounter(newCounter);
+
+    layoutRef.current.addSplitToActiveNode({
+      type: 'tab',
+      name: `Terminal ${newCounter}`,
+      component: 'terminal',
+      id: `terminal-${newCounter}`,
+      config: {
+        shellId: shellId
+      }
+    }, 'row', -1, true);
+  };
+
   const handleModelChange = (newModel) => {
     if (window.electronAPI && window.electronAPI.saveLayout) {
       // Before saving, embed editor states into the model
@@ -263,6 +338,8 @@ const App = () => {
             nodeJson.config.editorLanguage = editorStates[editorId].language;
           }
         }
+        // Note: shellId is already in the config from when we create the terminal
+        // No need to update it here - it's preserved from creation
         if (nodeJson.children) {
           nodeJson.children.forEach(updateNodeInJson);
         }
@@ -360,9 +437,12 @@ const App = () => {
         <TopBar
           onAddTerminal={addNewTerminal}
           onAddEditor={addNewEditor}
+          onAddFileManager={addNewFileManager}
+          onAddSplitTerminal={addSplitTerminal}
           layoutRef={layoutRef}
           terminalCounter={terminalCounter}
           editorCounter={editorCounter}
+          fileManagerCounter={fileManagerCounter}
           onUpdateCounters={onUpdateCounters}
           onStartDrag={onStartDrag}
         />

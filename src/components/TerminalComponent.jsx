@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 
-const TerminalComponent = ({ terminalId, onResize, registerFocusable, unregisterFocusable }) => {
+const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, unregisterFocusable }) => {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const fitAddonRef = useRef(null);
@@ -77,8 +77,10 @@ const TerminalComponent = ({ terminalId, onResize, registerFocusable, unregister
 
       // Set up listeners and store the actual listener functions for proper cleanup
       dataListener = window.electronAPI.onTerminalData(dataHandler);
-      exitListener = window.electronAPI.onTerminalExit(exitHandler);// Create terminal in main process first
-      window.electronAPI.createTerminal(terminalId).then(() => {
+      exitListener = window.electronAPI.onTerminalExit(exitHandler);
+
+      // Create terminal in main process first
+      window.electronAPI.createTerminal(terminalId, shellId).then(() => {
         console.log('Terminal created successfully:', terminalId);
         setIsReady(true);
         

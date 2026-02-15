@@ -1,7 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ShellButton from './ShellButton.jsx';
 
-const TopBar = ({ onAddTerminal, onAddEditor, layoutRef, terminalCounter, editorCounter, onUpdateCounters, onStartDrag }) => {
+const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTerminal, layoutRef, terminalCounter, editorCounter, fileManagerCounter, onUpdateCounters, onStartDrag }) => {
   const [draggedComponent, setDraggedComponent] = useState(null);
+  const [availableShells, setAvailableShells] = useState([]);
+
+  useEffect(() => {
+    const loadShells = async () => {
+      if (window.electronAPI && window.electronAPI.getAvailableShells) {
+        try {
+          const result = await window.electronAPI.getAvailableShells();
+          if (result.success && result.shells) {
+            setAvailableShells(result.shells);
+          }
+        } catch (error) {
+          console.error('Failed to load available shells:', error);
+        }
+      }
+    };
+    loadShells();
+  }, []);
 
   const componentTypes = [
     {
@@ -15,6 +33,12 @@ const TopBar = ({ onAddTerminal, onAddEditor, layoutRef, terminalCounter, editor
       name: 'editor', 
       icon: '📝',
       description: 'Monaco Editor Component'
+    },
+    {
+      type: 'filemanager',
+      name: 'file manager',
+      icon: '📁',
+      description: 'File Manager Component'
     }
   ];
 
@@ -29,7 +53,9 @@ const TopBar = ({ onAddTerminal, onAddEditor, layoutRef, terminalCounter, editor
     // Create the tab configuration for FlexLayout using the next counter values
     const newCounter = componentType.type === 'terminal' ? 
       (terminalCounter + 1) :
-      (editorCounter + 1);
+      componentType.type === 'editor' ?
+      (editorCounter + 1) :
+      (fileManagerCounter + 1);
     
     const tabJson = {
       type: "tab",
@@ -67,29 +93,48 @@ const TopBar = ({ onAddTerminal, onAddEditor, layoutRef, terminalCounter, editor
       onAddTerminal();
     } else if (componentType.type === 'editor') {
       onAddEditor();
+    } else if (componentType.type === 'filemanager') {
+      onAddFileManager();
     }
-  };  return (
+  };
+
+  const handleShellDragStart = (shellId) => {
+    console.log('Shell drag started:', shellId);
+    // We'll handle the split creation via onExternalDrag
+  };
+
+  return (
     <div className="top-bar">
       <div className="top-bar-left">
         <div className="top-bar-title">
           FlexClaude2
         </div>
-        <div className="component-buttons">
-          {componentTypes.map((component) => (
-            <div
-              key={component.type}
-              className={`component-button ${draggedComponent?.type === component.type ? 'dragging' : ''}`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, component)}
-              onDragEnd={handleDragEnd}
-              onClick={() => handleClick(component)}
-              title={`Click to add or drag to place ${component.description}`}
-            >
-              <span className="component-icon">{component.icon}</span>
-              <span className="component-name">{component.name}</span>
-            </div>
-          ))}
-        </div>
+         <div className="component-buttons">
+           {componentTypes.map((component) => (
+             <div
+               key={component.type}
+               className={`component-button ${draggedComponent?.type === component.type ? 'dragging' : ''}`}
+               draggable
+               onDragStart={(e) => handleDragStart(e, component)}
+               onDragEnd={handleDragEnd}
+               onClick={() => handleClick(component)}
+               title={`Click to add or drag to place ${component.description}`}
+             >
+               <span className="component-icon">{component.icon}</span>
+               <span className="component-name">{component.name}</span>
+             </div>
+           ))}
+         </div>
+
+         <div className="shell-buttons">
+           {availableShells.map((shell) => (
+             <ShellButton
+               key={shell.id}
+               shell={shell}
+               onDragStart={handleShellDragStart}
+             />
+           ))}
+         </div>
       </div>
       
       <div className="top-bar-center">
