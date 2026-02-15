@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "lmstudio": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LM Studio (local)",
+      "options": {
+        "baseURL": "http://127.0.0.1:1234/v1"
+      },
+      "models": {
+        "glm-4.7-flash@q5_k_xl": {
+          "name": "glm-4.7-flash@q5_k_xl",
+          "reasoning": true,
+          "tool_call": true
+          
+        }
+      }
+    }
+  }
+}

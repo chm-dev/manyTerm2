@@ -9,6 +9,18 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
   const xtermRef = useRef(null);
   const fitAddonRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
+  
+  // Refs to hold latest values to avoid stale closures in ResizeObserver
+  const isReadyRef = useRef(false);
+  const onResizeRef = useRef(onResize);
+
+  useEffect(() => {
+    isReadyRef.current = isReady;
+  }, [isReady]);
+
+  useEffect(() => {
+    onResizeRef.current = onResize;
+  }, [onResize]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -24,22 +36,90 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
       fontFamily: '"FiraCode Nerd Font",Consolas, "Courier New", monospace',
       fontSize: 14,
       cursorBlink: true,
-    });    const fitAddon = new FitAddon();
+      allowProposedApi: true
+    });
+    
+    const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
     
     // Load WebGL addon for better performance (with fallback)
+    let webglAddon = null;
     try {
-      const webglAddon = new WebglAddon();
+      webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => {
+        webglAddon.dispose();
+      });
       terminal.loadAddon(webglAddon);
       console.log('WebGL renderer loaded successfully for terminal:', terminalId);
     } catch (error) {
       console.warn('WebGL renderer not supported, falling back to canvas renderer:', error);
-    }// Wait for the container to be properly sized before opening terminal
+    }
+
+    // Debounced resize handler using refs to avoid stale closures
+    let resizeTimeout;
+    const lastDimensions = { cols: 0, rows: 0 };
+    
+    const handleResize = () => {
+      // Clear existing timer
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      
+      // Set new timer (100ms debounce)
+      resizeTimeout = setTimeout(() => {
+        if (!terminal || !fitAddonRef.current) return;
+        
+        // Guard against zero dimensions (happens when tab is hidden/dragged)
+        // Check if element is attached to DOM and has dimensions
+        const element = terminalRef.current;
+        if (!element || element.offsetWidth === 0 || element.offsetHeight === 0) {
+          return;
+        }
+        
+        try {
+          // Fit to container
+          fitAddon.fit();
+          
+          const { cols, rows } = terminal;
+          
+          // Don't resize to 0/invalid dimensions
+          if (cols <= 0 || rows <= 0 || isNaN(cols) || isNaN(rows)) {
+            return;
+          }
+
+          // Check if dimensions actually changed to prevent loops and unnecessary updates
+          if (cols === lastDimensions.cols && rows === lastDimensions.rows) {
+            // Even if dimensions are same, we might need a refresh if coming from hidden state
+            // but usually we can skip the heavy IPC call
+            return;
+          }
+          
+          lastDimensions.cols = cols;
+          lastDimensions.rows = rows;
+
+          // Use ref.current to see if we are ready to send resize events
+          if (window.electronAPI && isReadyRef.current) {
+            window.electronAPI.resizeTerminal(terminalId, cols, rows);
+          }
+
+          // Force a redraw to fix any rendering artifacts
+          // Renders from top (0) to bottom (rows-1)
+          terminal.refresh(0, rows - 1);
+
+          // Invoke parent callback if available
+          if (onResizeRef.current) {
+            onResizeRef.current(cols, rows);
+          }
+        } catch (e) {
+          console.warn('Resize error:', e);
+        }
+      }, 100);
+    };
+
+    // Wait for the container to be properly sized before opening terminal
     const openTerminal = () => {
       if (terminalRef.current && terminalRef.current.offsetWidth > 0 && terminalRef.current.offsetHeight > 0) {
         try {
           terminal.open(terminalRef.current);
-          fitAddon.fit();
+          handleResize(); // Initial fit
         } catch (error) {
           console.warn('Error opening terminal:', error);
           // Retry after a short delay
@@ -54,7 +134,9 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
     openTerminal();
 
     xtermRef.current = terminal;
-    fitAddonRef.current = fitAddon;    // Set up event handlers
+    fitAddonRef.current = fitAddon;
+
+    // Set up event handlers
     let dataHandler = null;
     let exitHandler = null;
     let dataListener = null;
@@ -83,39 +165,21 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
       window.electronAPI.createTerminal(terminalId, shellId).then(() => {
         console.log('Terminal created successfully:', terminalId);
         setIsReady(true);
+        isReadyRef.current = true; // Update ref immediately for any pending resize
         
         // Set up user input handler after terminal is created
         inputDisposable = terminal.onData((data) => {
-          console.log('User input:', terminalId, data);
+          // console.log('User input:', terminalId, data);
           window.electronAPI.writeTerminal(terminalId, data);
         });
         
-        // Send initial size
-        const cols = terminal.cols;
-        const rows = terminal.rows;
-        window.electronAPI.resizeTerminal(terminalId, cols, rows);
-        if (onResize) {
-          onResize(cols, rows);
-        }
+        // Trigger initial resize after creation
+        handleResize();
+        
       }).catch(error => {
         console.error('Failed to create terminal:', terminalId, error);
       });
     }
-
-    // Handle resize
-    const handleResize = () => {
-      if (fitAddon && terminal) {
-        fitAddon.fit();
-        const cols = terminal.cols;
-        const rows = terminal.rows;
-        if (window.electronAPI && isReady) {
-          window.electronAPI.resizeTerminal(terminalId, cols, rows);
-        }
-        if (onResize) {
-          onResize(cols, rows);
-        }
-      }
-    };
 
     // Set up resize observer
     const resizeObserver = new ResizeObserver(handleResize);
@@ -124,29 +188,42 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
     }    // Cleanup function
     return () => {
       console.log('Cleaning up terminal:', terminalId);
+      
+      // Clear any pending resize
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      
       resizeObserver.disconnect();
+      
       if (inputDisposable) {
-        console.log('Disposing input handler for:', terminalId);
         try {
           inputDisposable.dispose();
         } catch (error) {
           console.warn('Error disposing input handler:', error);
         }
       }
+      
       if (window.electronAPI) {
         console.log('Closing terminal in main process:', terminalId);
         window.electronAPI.closeTerminal(terminalId);
         
         // Remove only the specific listeners for this terminal
         if (dataListener) {
-          console.log('Removing data listener for:', terminalId);
           window.electronAPI.removeListener('terminal-data', dataListener);
         }
         if (exitListener) {
-          console.log('Removing exit listener for:', terminalId);
           window.electronAPI.removeListener('terminal-exit', exitListener);
         }
       }
+      
+      // Dispose WebGL addon explicitly if it exists
+      if (webglAddon) {
+        try {
+          webglAddon.dispose();
+        } catch (e) {
+          console.warn('Error disposing WebGL addon:', e);
+        }
+      }
+
       if (terminal) {
         console.log('Disposing terminal instance:', terminalId);
         try {
@@ -180,34 +257,6 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
       };
     }
   }, [terminalId, registerFocusable, unregisterFocusable, isReady]);
-
-  // Handle external resize (from FlexLayout changes)
-  useEffect(() => {
-    const handleLayoutResize = () => {
-      setTimeout(() => {
-        if (fitAddonRef.current && xtermRef.current) {
-          fitAddonRef.current.fit();
-          const cols = xtermRef.current.cols;
-          const rows = xtermRef.current.rows;
-          if (window.electronAPI && isReady) {
-            window.electronAPI.resizeTerminal(terminalId, cols, rows);
-          }
-          if (onResize) {
-            onResize(cols, rows);
-          }
-        }
-      }, 100);
-    };
-
-    window.addEventListener('resize', handleLayoutResize);
-    
-    // Also trigger on component mount
-    handleLayoutResize();
-
-    return () => {
-      window.removeEventListener('resize', handleLayoutResize);
-    };
-  }, [terminalId, isReady, onResize]);
 
   return (
     <div className="terminal-container">
