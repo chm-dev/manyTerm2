@@ -4,9 +4,9 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 /**
- * Default shell configurations for Windows
+ * Default shell configurations per platform
  */
-const DEFAULT_SHELLS = {
+const DEFAULT_SHELLS_WINDOWS = {
   cmd: {
     id: 'cmd',
     name: 'Command Prompt',
@@ -36,26 +36,112 @@ const DEFAULT_SHELLS = {
   },
 };
 
+const DEFAULT_SHELLS_UNIX = {
+  bash: {
+    id: 'bash',
+    name: 'Bash',
+    executable: 'bash',
+    args: [],
+    cwd: '${HOMEPATH}',
+    env: {},
+    icon: 'bash',
+  },
+  zsh: {
+    id: 'zsh',
+    name: 'Zsh',
+    executable: 'zsh',
+    args: [],
+    cwd: '${HOMEPATH}',
+    env: {},
+    icon: 'zsh',
+  },
+  fish: {
+    id: 'fish',
+    name: 'Fish',
+    executable: 'fish',
+    args: [],
+    cwd: '${HOMEPATH}',
+    env: {},
+    icon: 'fish',
+  },
+  sh: {
+    id: 'sh',
+    name: 'Sh',
+    executable: 'sh',
+    args: [],
+    cwd: '${HOMEPATH}',
+    env: {},
+    icon: 'sh',
+  },
+};
+
 /**
- * Get default shell config for the current platform
+ * Get platform-appropriate default shell definitions
+ */
+const DEFAULT_SHELLS = process.platform === 'win32'
+  ? DEFAULT_SHELLS_WINDOWS
+  : DEFAULT_SHELLS_UNIX;
+
+/**
+ * Detect the user's preferred shell from the environment ($SHELL on Unix).
+ * Returns a shell config object or null if detection fails.
+ */
+function detectSystemShell() {
+  if (process.platform !== 'win32' && process.env.SHELL) {
+    const shellPath = process.env.SHELL;
+    const shellName = path.basename(shellPath);
+    // Return a config using the exact path so it always resolves correctly
+    return {
+      id: shellName,
+      name: shellName.charAt(0).toUpperCase() + shellName.slice(1),
+      executable: shellPath,
+      args: [],
+      cwd: '${HOMEPATH}',
+      env: {},
+      icon: shellName,
+    };
+  }
+  return null;
+}
+
+/**
+ * Get default shell id for the current platform
  */
 function getDefaultShellId() {
-  return 'cmd';
+  if (process.platform === 'win32') {
+    return 'cmd';
+  }
+  // On Unix prefer $SHELL basename, then fall back through common shells
+  if (process.env.SHELL) {
+    return path.basename(process.env.SHELL);
+  }
+  // Common fallback order
+  for (const id of ['bash', 'zsh', 'fish', 'sh']) {
+    try {
+      execSync(`which ${id}`, { stdio: 'pipe' });
+      return id;
+    } catch {
+      // not found, try next
+    }
+  }
+  return 'sh';
 }
 
 /**
  * Check if a shell executable exists on the system
- * @param {string} executable - The shell executable name or path
+ * @param {string} executable - The shell executable name or absolute path
  * @returns {boolean} True if the executable can be found
  */
 function shellExists(executable) {
+  // Absolute path – check directly on disk (handles /bin/bash, /usr/bin/zsh, etc.)
+  if (path.isAbsolute(executable)) {
+    return fs.existsSync(executable);
+  }
   try {
     if (process.platform === 'win32') {
-      // On Windows, use 'where' command
       execSync(`where ${executable}`, { stdio: 'pipe' });
       return true;
     } else {
-      // On Unix-like systems, use 'which' command
       execSync(`which ${executable}`, { stdio: 'pipe' });
       return true;
     }
@@ -119,14 +205,21 @@ function validateShellConfig(shellConfig) {
 }
 
 /**
- * Get merged shell configuration from defaults and user config
+ * Get merged shell configuration from defaults and user config.
+ * On Unix, the $SHELL-detected shell is injected first so it always appears.
  * @param {object} userConfig - User-provided shell configurations
  * @returns {object} Merged shell configurations with available shells
  */
 function getMergedShellConfig(userConfig) {
   const merged = {};
 
-  // Start with defaults
+  // Inject system-detected shell first (Unix $SHELL)
+  const systemShell = detectSystemShell();
+  if (systemShell) {
+    merged[systemShell.id] = systemShell;
+  }
+
+  // Add platform defaults
   Object.assign(merged, DEFAULT_SHELLS);
 
   // Merge in user config
