@@ -213,7 +213,7 @@ const App = () => {
     console.log('onExternalDrag called:', e.dataTransfer.types);
 
     // Check if this is a shell button drag
-    if (e.dataTransfer.types.includes('application/shellId')) {
+    if (e.dataTransfer.types.includes('application/shellid')) {
       console.log('Shell button drag detected');
       e.dataTransfer.dropEffect = 'copy';
 

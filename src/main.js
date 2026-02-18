@@ -131,20 +131,23 @@ function createWindow() {
     }
   });
 
-  // Force development mode for now
-  const startUrl = 'http://localhost:5173';
-  mainWindow.loadURL(startUrl);
-
-  // Always open dev tools in development
-  mainWindow.webContents.openDevTools();
-
-  // In development, wait for the dev server to be ready
+  // Load the appropriate URL based on environment
   if (isDev) {
+    const startUrl = 'http://localhost:5173';
+    mainWindow.loadURL(startUrl);
+
+    // Always open dev tools in development
+    mainWindow.webContents.openDevTools();
+
+    // In development, wait for the dev server to be ready
     mainWindow.webContents.once('did-fail-load', () => {
       setTimeout(() => {
         mainWindow.loadURL(startUrl);
       }, 1000);
     });
+  } else {
+    // In production, load the built files
+    mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
   }
 }
 

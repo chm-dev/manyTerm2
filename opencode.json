@@ -12,8 +12,22 @@
           "name": "glm-4.7-flash@q5_k_xl",
           "reasoning": true,
           "tool_call": true
-          
         }
+      }
+    }
+  },
+  "mcp": {
+    "electron-mcp-server": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "electron-mcp-server"
+      ],
+      "enabled": true,
+      "environment": {
+        "SECURITY_LEVEL": "balanced",
+        "SCREENSHOT_ENCRYPTION_KEY": "secret-key-for-screenshot-encryption"
       }
     }
   }

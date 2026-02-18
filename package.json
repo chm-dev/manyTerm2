@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "vite",
-    "dev:electron": "wait-on http://localhost:5173 && electron --remote-debugging-port=9222 .",
+    "dev:electron": "wait-on http://localhost:5173 && electron --remote-debugging-port=9222 --remote-allow-origins=* .",
     "build": "vite build",
     "build:electron": "electron-builder",
     "preview": "vite preview"
@@ -26,7 +26,8 @@
     "electron-builder": "^24.9.1",
     "sass": "^1.93.0",
     "vite": "^5.1.0",
-    "wait-on": "^7.2.0"
+    "wait-on": "^7.2.0",
+    "ws": "^8.19.0"
   },
   "dependencies": {
     "@cubone/react-file-manager": "^1.28.2",
@@ -49,6 +50,11 @@
     "files": [
       "build/**/*",
       "src/main.js",
+      "src/preload.js",
+      "src/globalShortcuts.js",
+      "src/windowUtils.js",
+      "src/shellConfig.js",
+      "src/toggleAnimation.js",
       "node_modules/**/*"
     ]
   }
