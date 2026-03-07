@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ShellButton from './ShellButton.jsx';
 
-const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTerminal, layoutRef, terminalCounter, editorCounter, fileManagerCounter, onUpdateCounters, onStartDrag }) => {
+const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTerminal, layoutRef, terminalCounter, editorCounter, fileManagerCounter, onUpdateCounters, onStartDrag, onShellDragStart }) => {
   const [draggedComponent, setDraggedComponent] = useState(null);
   const [availableShells, setAvailableShells] = useState([]);
   const lastDragEventRef = useRef(null);
@@ -100,20 +100,14 @@ const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTermin
   };
 
   const handleShellDragStart = (e, shell) => {
-    console.log('handleShellDragStart called:', 'e:', e, 'shell:', shell, 'e type:', typeof e, 'shell type:', typeof shell);
-    
-    // Use the event from ShellButton if the passed event is undefined
-    const dragEvent = e || window._lastShellDragEvent;
-    
-    console.log('dragEvent:', dragEvent, 'dragEvent.dataTransfer:', dragEvent?.dataTransfer);
-    
-    if (dragEvent && dragEvent.dataTransfer) {
-      dragEvent.dataTransfer.effectAllowed = 'copy';
-      dragEvent.dataTransfer.setData('application/shellId', shell.id);
-      
-      console.log('Shell drag data set:', shell.id);
-    } else {
-      console.error('Drag event or dataTransfer is undefined');
+    if (e && e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'copy';
+      // Set the type so onExternalDrag can detect a shell drag
+      e.dataTransfer.setData('application/shellid', shell.id);
+    }
+    // Store the shell ID in the App ref during dragstart (getData won't work during dragover)
+    if (onShellDragStart) {
+      onShellDragStart(shell.id);
     }
   };
 

@@ -237,7 +237,7 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
           console.warn('Error disposing terminal:', error);
         }
       }
-    };  }, [terminalId]);
+    };  }, [terminalId, shellId]);
 
   // Register/unregister with focus manager
   useEffect(() => {

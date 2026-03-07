@@ -7,22 +7,10 @@ import '../scss/shell-button.scss';
  */
 const ShellButton = ({ shell, onDragStart }) => {
   const handleDragStart = (e) => {
-    console.log('ShellButton drag start, shell:', shell.id, 'event:', e, 'event type:', typeof e);
-    
-    // Store the event in window for access from TopBar
-    window._lastShellDragEvent = e;
-    
-    console.log('Stored event in window._lastShellDragEvent:', window._lastShellDragEvent);
-    
-    // Set the drag data immediately
     if (e && e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'copy';
-      e.dataTransfer.setData('application/shellId', shell.id);
+      e.dataTransfer.setData('application/shellid', shell.id);
     }
-    
-    console.log('About to call onDragStart with shell:', shell, 'and event:', e);
-    
-    // Pass the shell info and event to the parent (event first, then shell to match TopBar's expectations)
     if (onDragStart) {
       onDragStart(e, shell);
     }

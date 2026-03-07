@@ -13,6 +13,7 @@ const App = () => {
   const [editorCounter, setEditorCounter] = useState(1);
   const [fileManagerCounter, setFileManagerCounter] = useState(1);
   const [currentDragData, setCurrentDragData] = useState(null);
+  const currentShellDragIdRef = useRef(null); // Stores shell ID during drag (getData() is restricted during dragover)
   const [model, setModel] = useState(null); // Initialize model as null
   const [editorStates, setEditorStates] = useState({}); // To store { editorId: { content: '', language: '' } }
   const [isTopBarVisible, setIsTopBarVisible] = useState(false); // Top bar hidden by default
@@ -165,6 +166,7 @@ const App = () => {
     if (!model) return null; // Model might not be ready yet
     const component = node.getComponent();
     const id = node.getId();
+    const config = node.getConfig();
 
     switch (component) {
       case 'terminal':
@@ -172,7 +174,7 @@ const App = () => {
           <TerminalComponent
             key={id}
             terminalId={id}
-            shellId={node.getConfig()?.shellId}
+            shellId={config?.shellId}
             onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
             registerFocusable={registerFocusable}
             unregisterFocusable={unregisterFocusable}
@@ -210,29 +212,28 @@ const App = () => {
     }
   };
   const onExternalDrag = e => {
-    console.log('onExternalDrag called:', e.dataTransfer.types);
-
     // Check if this is a shell button drag
     if (e.dataTransfer.types.includes('application/shellid')) {
-      console.log('Shell button drag detected');
       e.dataTransfer.dropEffect = 'copy';
 
+      // NOTE: dataTransfer.getData() returns empty string during dragover (browser security restriction).
+      // We use currentShellDragIdRef which was populated during the dragstart event instead.
+      const shellId = currentShellDragIdRef.current;
+
+      const tabJson = {
+        type: 'tab',
+        name: 'Terminal',
+        component: 'terminal',
+        id: `terminal-${Date.now()}`,
+        config: {
+          shellId: shellId
+        }
+      };
+
       return {
-        json: {
-          type: 'tab',
-          name: `Terminal`,
-          component: 'terminal',
-          id: `terminal-${Date.now()}`, // Temporary ID for drag preview
-          config: {
-            shellId: e.dataTransfer.getData('application/shellId')
-          }
-        },
+        json: tabJson,
         onDrop: (node, event) => {
-          console.log('Shell drag drop completed');
-          const shellId = e.dataTransfer.getData('application/shellId');
-          if (onAddSplitTerminal && shellId) {
-            onAddSplitTerminal(shellId);
-          }
+          currentShellDragIdRef.current = null;
         }
       };
     }
@@ -445,6 +446,7 @@ const App = () => {
           fileManagerCounter={fileManagerCounter}
           onUpdateCounters={onUpdateCounters}
           onStartDrag={onStartDrag}
+          onShellDragStart={(shellId) => { currentShellDragIdRef.current = shellId; }}
         />
       )}
       <div className="layout-container">

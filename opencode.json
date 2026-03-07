@@ -12,6 +12,11 @@
           "name": "glm-4.7-flash@q5_k_xl",
           "reasoning": true,
           "tool_call": true
+        },
+        "qwen3.5-35b-a3b": {
+          "name": "qwen3.5-35b-a3b",
+          "reasoning": true,
+          "tool_call": true
         }
       }
     }
