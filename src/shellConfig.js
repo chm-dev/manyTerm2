@@ -34,6 +34,15 @@ const DEFAULT_SHELLS_WINDOWS = {
     env: {},
     icon: 'powershell',
   },
+    wsl: {
+    id: 'wsl',
+    name: 'WSL',
+    executable: 'wsl.exe',
+    args: [],
+    cwd: '${HOMEPATH}',
+    env: {},
+    icon: 'wsl',
+  },
 };
 
 const DEFAULT_SHELLS_UNIX = {
