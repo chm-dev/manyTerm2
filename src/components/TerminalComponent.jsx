@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 
-const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, unregisterFocusable }) => {
+const TerminalComponent = ({ terminalId, shellId, onResize, onProcessExit, registerFocusable, unregisterFocusable }) => {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const fitAddonRef = useRef(null);
@@ -13,6 +13,7 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
   // Refs to hold latest values to avoid stale closures in ResizeObserver
   const isReadyRef = useRef(false);
   const onResizeRef = useRef(onResize);
+  const onProcessExitRef = useRef(onProcessExit);
 
   useEffect(() => {
     isReadyRef.current = isReady;
@@ -21,6 +22,10 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
   useEffect(() => {
     onResizeRef.current = onResize;
   }, [onResize]);
+
+  useEffect(() => {
+    onProcessExitRef.current = onProcessExit;
+  }, [onProcessExit]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -153,7 +158,9 @@ const TerminalComponent = ({ terminalId, shellId, onResize, registerFocusable, u
 
       exitHandler = (id) => {
         if (id === terminalId && terminal) {
-          terminal.write('\r\n[Process completed]');
+          if (onProcessExitRef.current) {
+            onProcessExitRef.current(terminalId);
+          }
         }
       };
 

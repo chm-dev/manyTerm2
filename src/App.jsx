@@ -177,6 +177,7 @@ const App = () => {
             terminalId={id}
             shellId={config?.shellId}
             onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
+            onProcessExit={handleTerminalProcessExit}
             registerFocusable={registerFocusable}
             unregisterFocusable={unregisterFocusable}
           />
@@ -210,6 +211,14 @@ const App = () => {
   const handleTerminalResize = (terminalId, cols, rows) => {
     if (window.electronAPI) {
       window.electronAPI.resizeTerminal(terminalId, cols, rows);
+    }
+  };
+
+  const handleTerminalProcessExit = (terminalId) => {
+    if (!model) return;
+    const node = model.getNodeById(terminalId);
+    if (node) {
+      model.doAction(Actions.deleteTab(terminalId));
     }
   };
   const onExternalDrag = e => {
