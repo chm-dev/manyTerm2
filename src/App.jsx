@@ -146,19 +146,20 @@ const App = () => {
     loadLayout();
   }, []); // Empty dependency array ensures this runs only once on mount
 
-  // Keyboard shortcut handler for Ctrl+T to toggle top bar
+// Keyboard shortcut handler for Ctrl+T to toggle top bar
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.ctrlKey && event.key === 't') {
-        event.preventDefault(); // Prevent browser's default behavior
+        event.preventDefault();
+        event.stopPropagation();
         setIsTopBarVisible(prev => !prev);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
     
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, []); // Empty dependency array ensures this runs only once on mount
 
