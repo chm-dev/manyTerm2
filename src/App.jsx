@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { Layout, Model, TabNode, Actions } from 'flexlayout-react';
-import TerminalComponent from './components/TerminalComponent.jsx';
-import EditorComponent from './components/EditorComponent.jsx';
-import FileManagerComponent from './components/FileManagerComponent.jsx';
-import TopBar from './components/TopBar.jsx';
 import { useFocusManager } from './hooks/useFocusManager.js';
 import './scss/style.scss';
+
+const TerminalComponent = lazy(() => import('./components/TerminalComponent.jsx'));
+const EditorComponent = lazy(() => import('./components/EditorComponent.jsx'));
+const FileManagerComponent = lazy(() => import('./components/FileManagerComponent.jsx'));
+const TopBar = lazy(() => import('./components/TopBar.jsx'));
 
 const App = () => {
   const layoutRef = useRef(null);
@@ -172,37 +173,43 @@ const App = () => {
     switch (component) {
       case 'terminal':
         return (
-          <TerminalComponent
-            key={id}
-            terminalId={id}
-            shellId={config?.shellId}
-            onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
-            onProcessExit={handleTerminalProcessExit}
-            registerFocusable={registerFocusable}
-            unregisterFocusable={unregisterFocusable}
-          />
+          <Suspense fallback={<div className="terminal-container" />}>
+            <TerminalComponent
+              key={id}
+              terminalId={id}
+              shellId={config?.shellId}
+              onResize={(cols, rows) => handleTerminalResize(id, cols, rows)}
+              onProcessExit={handleTerminalProcessExit}
+              registerFocusable={registerFocusable}
+              unregisterFocusable={unregisterFocusable}
+            />
+          </Suspense>
         );
       case 'editor':
         return (
-          <EditorComponent
-            key={id}
-            editorId={id}
-            registerFocusable={registerFocusable}
-            unregisterFocusable={unregisterFocusable}
-            initialContent={editorStates[id]?.content}
-            initialLanguage={editorStates[id]?.language}
-            onContentChange={handleEditorContentChange}
-            onLanguageChange={handleEditorLanguageChange}
-          />
+          <Suspense fallback={<div className="editor-container" />}>
+            <EditorComponent
+              key={id}
+              editorId={id}
+              registerFocusable={registerFocusable}
+              unregisterFocusable={unregisterFocusable}
+              initialContent={editorStates[id]?.content}
+              initialLanguage={editorStates[id]?.language}
+              onContentChange={handleEditorContentChange}
+              onLanguageChange={handleEditorLanguageChange}
+            />
+          </Suspense>
         );
       case 'filemanager':
         return (
-          <FileManagerComponent
-            key={id}
-            fileManagerId={id}
-            registerFocusable={registerFocusable}
-            unregisterFocusable={unregisterFocusable}
-          />
+          <Suspense fallback={<div className="file-manager-container" />}>
+            <FileManagerComponent
+              key={id}
+              fileManagerId={id}
+              registerFocusable={registerFocusable}
+              unregisterFocusable={unregisterFocusable}
+            />
+          </Suspense>
         );
       default:
         return <div>Unknown component: {component}</div>;
@@ -445,19 +452,21 @@ const App = () => {
   return (
     <div className={`app ${isTopBarVisible ? 'top-bar-visible' : 'top-bar-hidden'}`}>
       {isTopBarVisible && (
-        <TopBar
-          onAddTerminal={addNewTerminal}
-          onAddEditor={addNewEditor}
-          onAddFileManager={addNewFileManager}
-          onAddSplitTerminal={addSplitTerminal}
-          layoutRef={layoutRef}
-          terminalCounter={terminalCounter}
-          editorCounter={editorCounter}
-          fileManagerCounter={fileManagerCounter}
-          onUpdateCounters={onUpdateCounters}
-          onStartDrag={onStartDrag}
-          onShellDragStart={(shellId) => { currentShellDragIdRef.current = shellId; }}
-        />
+        <Suspense fallback={null}>
+          <TopBar
+            onAddTerminal={addNewTerminal}
+            onAddEditor={addNewEditor}
+            onAddFileManager={addNewFileManager}
+            onAddSplitTerminal={addSplitTerminal}
+            layoutRef={layoutRef}
+            terminalCounter={terminalCounter}
+            editorCounter={editorCounter}
+            fileManagerCounter={fileManagerCounter}
+            onUpdateCounters={onUpdateCounters}
+            onStartDrag={onStartDrag}
+            onShellDragStart={(shellId) => { currentShellDragIdRef.current = shellId; }}
+          />
+        </Suspense>
       )}
       <div className="layout-container">
         {model && (

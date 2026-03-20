@@ -1,11 +1,11 @@
-const {app, BrowserWindow, ipcMain, shell} = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const isDev = !app.isPackaged;
 const pty = require('@lydell/node-pty');
 const registerGlobalShortcuts = require('./globalShortcuts');
-const {getBounds} = require('./windowUtils');
+const { getBounds } = require('./windowUtils');
 const shellConfigModule = require('./shellConfig');
 
 let mainWindow;
@@ -27,9 +27,14 @@ class ShellManager {
    * Initialize and validate available shells on startup
    */
   initializeAvailableShells() {
-    const available = shellConfigModule.listAvailableShells(this.userShellConfig);
-    console.log('Available shells:', available.map(s => `${s.name} (${s.executable})`).join(', '));
-    
+    const available = shellConfigModule.listAvailableShells(
+      this.userShellConfig,
+    );
+    console.log(
+      'Available shells:',
+      available.map(s => `${s.name} (${s.executable})`).join(', '),
+    );
+
     if (available.length === 0) {
       console.warn('Warning: No valid shells found on system!');
     }
@@ -61,22 +66,26 @@ class ShellManager {
   spawnTerminal(terminalId, shellId) {
     try {
       const shellConfig = this.getShell(shellId);
-      
+
       if (!shellConfig) {
         console.error('No valid shell configuration found');
-        return {success: false, error: 'No valid shell configuration found'};
+        return { success: false, error: 'No valid shell configuration found' };
       }
 
-      const executable = shellConfigModule.resolveEnvVariables(shellConfig.executable);
+      const executable = shellConfigModule.resolveEnvVariables(
+        shellConfig.executable,
+      );
       const spawnOptions = shellConfigModule.getSpawnOptions(shellConfig);
 
-      console.log(`Spawning terminal ${terminalId} with ${shellConfig.name} (${executable})`);
+      console.log(
+        `Spawning terminal ${terminalId} with ${shellConfig.name} (${executable})`,
+      );
 
       const terminal = pty.spawn(executable, shellConfig.args, spawnOptions);
-      return {success: true, terminal};
+      return { success: true, terminal };
     } catch (error) {
       console.error(`Failed to spawn terminal ${terminalId}:`, error.message);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
 
@@ -97,22 +106,22 @@ function createWindow() {
   const bounds = getBounds(store);
 
   mainWindow = new BrowserWindow({
-    width         : bounds.width,
-    height        : bounds.height,
-    x             : bounds.x,
-    y             : bounds.y,
-    frame         : false,
-    transparent   : true,
-    acrylic       : true,
-    alwaysOnTop   : false,
-    skipTaskbar   : true,
-    resizable     : true,
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    frame: false,
+    transparent: true,
+    acrylic: true,
+    alwaysOnTop: false,
+    skipTaskbar: true,
+    resizable: true,
     webPreferences: {
-      nodeIntegration   : false,
-      contextIsolation  : true,
+      nodeIntegration: false,
+      contextIsolation: true,
       enableRemoteModule: false,
-      preload           : path.join(__dirname, 'preload.js')
-    }
+      preload: path.join(__dirname, 'preload.js'),
+    },
   });
   // mainWindow.setBackgroundMaterial('acrylic'); Register global shortcuts for quake
   // console mode
@@ -153,7 +162,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   // Import electron-store dynamically
-  const Store = (await import ('electron-store')).default;
+  const Store = (await import('electron-store')).default;
   store = new Store();
 
   // Initialize shell manager
@@ -162,13 +171,35 @@ app.whenReady().then(async () => {
   createWindow();
 });
 
-app.on('window-all-closed', () => {
-  // Clean up all terminals
-  terminals.forEach(terminal => terminal.kill());
+function killAllTerminals() {
+  terminals.forEach((terminal, id) => {
+    try {
+      terminal.kill();
+      // On Windows, also force-kill by PID to ensure the PTY host process exits
+      if (process.platform === 'win32' && terminal.pid) {
+        try {
+          process.kill(terminal.pid, 0); // Check if process still exists
+          process.kill(terminal.pid);    // SIGTERM
+        } catch (_) {
+          // Already dead, ignore
+        }
+      }
+    } catch (err) {
+      console.error(`Failed to kill terminal ${id}:`, err.message);
+    }
+  });
   terminals.clear();
+}
 
+app.on('before-quit', () => {
+  killAllTerminals();
+});
+
+app.on('window-all-closed', () => {
+  killAllTerminals();
+  console.log('app quit');
   if (process.platform !== 'darwin') {
-    app.quit();
+    app.exit(0);
   }
 });
 
@@ -185,7 +216,7 @@ ipcMain.handle('create-terminal', (event, terminalId, shellId) => {
   // If terminal already exists, don't create a new one
   if (terminals.has(terminalId)) {
     console.log('Terminal already exists:', terminalId);
-    return {success: true, existed: true};
+    return { success: true, existed: true };
   }
 
   // Use shellId parameter, or fall back to default
@@ -211,16 +242,16 @@ ipcMain.handle('create-terminal', (event, terminalId, shellId) => {
     mainWindow.webContents.send('terminal-exit', terminalId);
   });
 
-  return {success: true, existed: false};
+  return { success: true, existed: false };
 });
 
 ipcMain.handle('get-available-shells', () => {
   try {
     const shells = shellManager.listAvailable();
-    return {success: true, shells};
+    return { success: true, shells };
   } catch (error) {
     console.error('Failed to get available shells:', error);
-    return {success: false, error: error.message};
+    return { success: false, error: error.message };
   }
 });
 
@@ -229,19 +260,19 @@ ipcMain.handle('write-terminal', (event, terminalId, data) => {
   const terminal = terminals.get(terminalId);
   if (terminal) {
     terminal.write(data);
-    return {success: true};
+    return { success: true };
   }
   console.log('Terminal not found:', terminalId);
-  return {success: false, error: 'Terminal not found'};
+  return { success: false, error: 'Terminal not found' };
 });
 
 ipcMain.handle('resize-terminal', (event, terminalId, cols, rows) => {
   const terminal = terminals.get(terminalId);
   if (terminal) {
     terminal.resize(cols, rows);
-    return {success: true};
+    return { success: true };
   }
-  return {success: false, error: 'Terminal not found'};
+  return { success: false, error: 'Terminal not found' };
 });
 
 ipcMain.handle('close-terminal', (event, terminalId) => {
@@ -251,10 +282,10 @@ ipcMain.handle('close-terminal', (event, terminalId) => {
     console.log('Closing terminal:', terminalId);
     terminal.kill();
     terminals.delete(terminalId);
-    return {success: true};
+    return { success: true };
   }
   console.log('Terminal not found for closing:', terminalId);
-  return {success: false, error: 'Terminal not found'};
+  return { success: false, error: 'Terminal not found' };
 });
 
 // Layout persistence handlers
@@ -262,32 +293,32 @@ ipcMain.handle('save-layout', async (event, layoutJson) => {
   if (store) {
     try {
       store.set('layout', layoutJson);
-      return {success: true};
+      return { success: true };
     } catch (error) {
       console.error('Failed to save layout:', error);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
-  return {success: false, error: 'Store not initialized'};
+  return { success: false, error: 'Store not initialized' };
 });
 
 ipcMain.handle('load-layout', async () => {
   if (store) {
     try {
       const layoutJson = store.get('layout');
-      return {success: true, layoutJson};
+      return { success: true, layoutJson };
     } catch (error) {
       console.error('Failed to load layout:', error);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
-  return {success: false, error: 'Store not initialized'};
+  return { success: false, error: 'Store not initialized' };
 });
 
 // Window control handlers
 ipcMain.handle('window-control', (event, action) => {
   if (!mainWindow) {
-    return {success: false, error: 'Main window not available'};
+    return { success: false, error: 'Main window not available' };
   }
 
   try {
@@ -307,12 +338,12 @@ ipcMain.handle('window-control', (event, action) => {
         break;
       default:
         console.log('Unknown window control action:', action);
-        return {success: false, error: 'Unknown action'};
+        return { success: false, error: 'Unknown action' };
     }
-    return {success: true};
+    return { success: true };
   } catch (error) {
     console.error('Window control error:', error);
-    return {success: false, error: error.message};
+    return { success: false, error: error.message };
   }
 });
 
@@ -321,23 +352,27 @@ ipcMain.handle('get-directory-contents', async (event, dirPath) => {
   try {
     // Default to user's home directory if no path provided
     const targetPath = dirPath || require('os').homedir();
-    
+
     console.log('Reading directory:', targetPath);
     const entries = await fs.readdir(targetPath, { withFileTypes: true });
-    
-    const files = await Promise.all(entries.map(async (entry) => {
-      const fullPath = path.join(targetPath, entry.name);
-      const stats = await fs.stat(fullPath).catch(() => null);
-      
-      return {
-        name: entry.name,
-        isDirectory: entry.isDirectory(),
-        path: fullPath.replace(/\\/g, '/'), // Normalize path separators
-        updatedAt: stats ? stats.mtime.toISOString() : new Date().toISOString(),
-        size: entry.isFile() && stats ? stats.size : undefined
-      };
-    }));
-    
+
+    const files = await Promise.all(
+      entries.map(async entry => {
+        const fullPath = path.join(targetPath, entry.name);
+        const stats = await fs.stat(fullPath).catch(() => null);
+
+        return {
+          name: entry.name,
+          isDirectory: entry.isDirectory(),
+          path: fullPath.replace(/\\/g, '/'), // Normalize path separators
+          updatedAt: stats
+            ? stats.mtime.toISOString()
+            : new Date().toISOString(),
+          size: entry.isFile() && stats ? stats.size : undefined,
+        };
+      }),
+    );
+
     return { success: true, files };
   } catch (error) {
     console.error('Error reading directory:', error);
@@ -401,11 +436,11 @@ ipcMain.handle('download-files', async (event, filePaths) => {
     // For now, we'll just copy files to the Downloads folder
     const os = require('os');
     const downloadsPath = path.join(os.homedir(), 'Downloads');
-    
+
     for (const filePath of filePaths) {
       const fileName = path.basename(filePath);
       const targetPath = path.join(downloadsPath, fileName);
-      
+
       // Check if it's a file or directory
       const stats = await fs.stat(filePath);
       if (stats.isFile()) {
@@ -414,7 +449,7 @@ ipcMain.handle('download-files', async (event, filePaths) => {
       }
       // For directories, we'd need to implement recursive copying
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error downloading files:', error);
