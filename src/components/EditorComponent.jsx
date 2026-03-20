@@ -1,7 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
+import Editor, { loader } from '@monaco-editor/react';
+import * as monaco from 'monaco-editor';
 import { editor_bg, editor_fg, editor_line_highlight } from '../scss/colors.module.scss';
-console.log('Imported colors:', { editor_bg, editor_fg, editor_line_highlight });
+
+// Provide a no-op blob worker so Monaco can "create" workers without erroring.
+// In Electron + Vite dev mode, the real worker bundles are served as HTML (404),
+// causing Monaco to emit Worker error events. A no-op blob worker accepts the
+// connection silently; Monaco gracefully degrades to main-thread processing.
+const _noopWorkerUrl = URL.createObjectURL(new Blob([''], { type: 'application/javascript' }));
+self.MonacoEnvironment = {
+  getWorker: () => new Worker(_noopWorkerUrl),
+};
+
+// Use locally bundled monaco-editor instead of CDN to avoid AMD loader conflicts
+// with fortune-sheet's numeral.js (which detects window.define.amd and then clashes).
+loader.config({ monaco });
 
 
 const EditorComponent = ({

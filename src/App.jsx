@@ -1,22 +1,37 @@
-import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Layout, Model, TabNode, Actions } from 'flexlayout-react';
 import { useFocusManager } from './hooks/useFocusManager.js';
 import './scss/style.scss';
 
 const TerminalComponent = lazy(() => import('./components/TerminalComponent.jsx'));
 const EditorComponent = lazy(() => import('./components/EditorComponent.jsx'));
-const FileManagerComponent = lazy(() => import('./components/FileManagerComponent.jsx'));
+const SpreadsheetComponent = lazy(() => import('./components/SpreadsheetComponent.jsx'));
 const TopBar = lazy(() => import('./components/TopBar.jsx'));
+
+const normalizeSpreadsheetData = (rawData) => {
+  if (!Array.isArray(rawData) || rawData.length === 0) {
+    return [{ name: 'Sheet1' }];
+  }
+
+  return rawData.map((sheet, index) => ({
+    ...sheet,
+    name: sheet?.name || `Sheet${index + 1}`,
+    data: Array.isArray(sheet?.data) ? sheet.data : [],
+  }));
+};
 
 const App = () => {
   const layoutRef = useRef(null);
   const [terminalCounter, setTerminalCounter] = useState(1);
   const [editorCounter, setEditorCounter] = useState(1);
-  const [fileManagerCounter, setFileManagerCounter] = useState(1);
+  const [spreadsheetCounter, setSpreadsheetCounter] = useState(1);
   const [currentDragData, setCurrentDragData] = useState(null);
   const currentShellDragIdRef = useRef(null); // Stores shell ID during drag (getData() is restricted during dragover)
+  const spreadsheetStatesRef = useRef({});
   const [model, setModel] = useState(null); // Initialize model as null
+  const [layoutRevision, setLayoutRevision] = useState(0);
   const [editorStates, setEditorStates] = useState({}); // To store { editorId: { content: '', language: '' } }
+  const [spreadsheetStates, setSpreadsheetStates] = useState({}); // To store { spreadsheetId: { data: [] } }
   const [isTopBarVisible, setIsTopBarVisible] = useState(false); // Top bar hidden by default
 
   // Default layout configuration
@@ -80,9 +95,10 @@ const App = () => {
             const loadedModelJson = result.layoutJson; // Work with the raw JSON
 
             const newEditorStates = {};
+            const newSpreadsheetStates = {};
             let maxTerm = 0;
             let maxEdit = 0;
-            let maxFileManager = 0;
+            let maxSpreadsheet = 0;
 
             // Recursive function to traverse the layout JSON
             const processNodeConfig = (node) => {
@@ -105,10 +121,17 @@ const App = () => {
                   const nameParts = node.name.split(' ');
                   const num = parseInt(nameParts[nameParts.length - 1]);
                   if (!isNaN(num) && num > maxTerm) maxTerm = num;
-                } else if (node.component === 'filemanager') {
+                } else if (node.component === 'spreadsheet') {
+                  const spreadsheetId = node.id;
+                  if (node.config && node.config.spreadsheetData !== undefined) {
+                    newSpreadsheetStates[spreadsheetId] = {
+                      data: normalizeSpreadsheetData(node.config.spreadsheetData)
+                    };
+                  }
+
                   const nameParts = node.name.split(' ');
                   const num = parseInt(nameParts[nameParts.length - 1]);
-                  if (!isNaN(num) && num > maxFileManager) maxFileManager = num;
+                  if (!isNaN(num) && num > maxSpreadsheet) maxSpreadsheet = num;
                 }
               }
               if (node.children) {
@@ -125,11 +148,13 @@ const App = () => {
 
 
             setEditorStates(newEditorStates);
+            setSpreadsheetStates(newSpreadsheetStates);
+            spreadsheetStatesRef.current = newSpreadsheetStates;
             setModel(Model.fromJson(loadedModelJson)); // Create the model instance for FlexLayout
 
             setTerminalCounter(maxTerm || 1); // Fallback to 1 if no tabs found or numbers are weird
             setEditorCounter(maxEdit || 1);
-            setFileManagerCounter(maxFileManager || 1);   // Fallback to 1
+            setSpreadsheetCounter(maxSpreadsheet || 1);   // Fallback to 1
             return;
           } else if (result.error) {
             console.error('Failed to load layout:', result.error);
@@ -200,12 +225,15 @@ const App = () => {
             />
           </Suspense>
         );
-      case 'filemanager':
+      case 'spreadsheet':
         return (
-          <Suspense fallback={<div className="file-manager-container" />}>
-            <FileManagerComponent
+          <Suspense fallback={<div className="spreadsheet-container" />}>
+            <SpreadsheetComponent
               key={id}
-              fileManagerId={id}
+              spreadsheetId={id}
+              layoutRevision={layoutRevision}
+              initialData={spreadsheetStates[id]?.data}
+              onDataChange={handleSpreadsheetDataChange}
               registerFocusable={registerFocusable}
               unregisterFocusable={unregisterFocusable}
             />
@@ -279,8 +307,8 @@ const App = () => {
       setTerminalCounter(newCounter);
     } else if (componentType === 'editor') {
       setEditorCounter(newCounter);
-    } else if (componentType === 'filemanager') {
-      setFileManagerCounter(newCounter);
+    } else if (componentType === 'spreadsheet') {
+      setSpreadsheetCounter(newCounter);
     }
   };
 
@@ -313,15 +341,15 @@ const App = () => {
     });
   };
 
-  const addNewFileManager = () => {
-    const newCounter = fileManagerCounter + 1;
-    setFileManagerCounter(newCounter);
+  const addNewSpreadsheet = () => {
+    const newCounter = spreadsheetCounter + 1;
+    setSpreadsheetCounter(newCounter);
 
     layoutRef.current.addTabToActiveTabSet({
       type: 'tab',
-      name: `File Manager ${newCounter}`,
-      component: 'filemanager',
-      id: `filemanager-${newCounter}`
+      name: `Spreadsheet ${newCounter}`,
+      component: 'spreadsheet',
+      id: `spreadsheet-${newCounter}`
     });
   };
 
@@ -355,6 +383,13 @@ const App = () => {
             nodeJson.config.editorContent = editorStates[editorId].content;
             nodeJson.config.editorLanguage = editorStates[editorId].language;
           }
+        } else if (nodeJson.type === 'tab' && nodeJson.component === 'spreadsheet') {
+          const spreadsheetId = nodeJson.id;
+          const spreadsheetState = spreadsheetStatesRef.current[spreadsheetId] || spreadsheetStates[spreadsheetId];
+          if (spreadsheetState) {
+            nodeJson.config = { ...(nodeJson.config || {}) };
+            nodeJson.config.spreadsheetData = spreadsheetState.data;
+          }
         }
         // Note: shellId is already in the config from when we create the terminal
         // No need to update it here - it's preserved from creation
@@ -373,6 +408,8 @@ const App = () => {
       // console.log('Saving layout via onModelChange with editor states:', jsonOutput);
       window.electronAPI.saveLayout(jsonOutput);
     }
+
+    setLayoutRevision(prevRevision => prevRevision + 1);
   };
 
   const handleEditorContentChange = (editorId, content) => {
@@ -449,6 +486,56 @@ const App = () => {
     });
   };
 
+  const handleSpreadsheetDataChange = useCallback((spreadsheetId, data) => {
+    const normalizedData = normalizeSpreadsheetData(data);
+    const previousData = spreadsheetStatesRef.current[spreadsheetId]?.data;
+    if (previousData === normalizedData) {
+      return;
+    }
+
+    const previousJson = previousData ? JSON.stringify(previousData) : '';
+    const nextJson = JSON.stringify(normalizedData);
+    if (previousJson === nextJson) {
+      return;
+    }
+
+    spreadsheetStatesRef.current = {
+      ...spreadsheetStatesRef.current,
+      [spreadsheetId]: {
+        data: normalizedData
+      }
+    };
+
+    if (model && window.electronAPI && window.electronAPI.saveLayout) {
+      const jsonToSave = model.toJson();
+
+      const updateNodeRecursively = (nodeJson) => {
+        if (nodeJson.type === 'tab' && nodeJson.component === 'spreadsheet') {
+          const currentTabId = nodeJson.id;
+          const spreadsheetState = spreadsheetStatesRef.current[currentTabId];
+          if (spreadsheetState) {
+            nodeJson.config = {
+              ...(nodeJson.config || {}),
+              spreadsheetData: spreadsheetState.data
+            };
+          }
+        }
+
+        if (nodeJson.children) {
+          nodeJson.children.forEach(updateNodeRecursively);
+        }
+      };
+
+      if (jsonToSave.layout && jsonToSave.layout.children) {
+        jsonToSave.layout.children.forEach(updateNodeRecursively);
+      } else if (jsonToSave.layout) {
+        updateNodeRecursively(jsonToSave.layout);
+      }
+
+      window.electronAPI.saveLayout(jsonToSave);
+    }
+  }, [model]);
+
   return (
     <div className={`app ${isTopBarVisible ? 'top-bar-visible' : 'top-bar-hidden'}`}>
       {isTopBarVisible && (
@@ -456,12 +543,12 @@ const App = () => {
           <TopBar
             onAddTerminal={addNewTerminal}
             onAddEditor={addNewEditor}
-            onAddFileManager={addNewFileManager}
+            onAddSpreadsheet={addNewSpreadsheet}
             onAddSplitTerminal={addSplitTerminal}
             layoutRef={layoutRef}
             terminalCounter={terminalCounter}
             editorCounter={editorCounter}
-            fileManagerCounter={fileManagerCounter}
+            spreadsheetCounter={spreadsheetCounter}
             onUpdateCounters={onUpdateCounters}
             onStartDrag={onStartDrag}
             onShellDragStart={(shellId) => { currentShellDragIdRef.current = shellId; }}

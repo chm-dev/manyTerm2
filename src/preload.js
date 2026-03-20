@@ -41,13 +41,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Layout persistence
   saveLayout: (layoutJson) => ipcRenderer.invoke('save-layout', layoutJson),
-  loadLayout: () => ipcRenderer.invoke('load-layout'),
-
-  // File system operations for file manager
-  getDirectoryContents: (path) => ipcRenderer.invoke('get-directory-contents', path),
-  createFolder: (path) => ipcRenderer.invoke('create-folder', path),
-  deleteFiles: (paths) => ipcRenderer.invoke('delete-files', paths),
-  renameFile: (oldPath, newPath) => ipcRenderer.invoke('rename-file', oldPath, newPath),
-  openFile: (path) => ipcRenderer.invoke('open-file', path),
-  downloadFiles: (paths) => ipcRenderer.invoke('download-files', paths)
+  loadLayout: () => ipcRenderer.invoke('load-layout')
 });

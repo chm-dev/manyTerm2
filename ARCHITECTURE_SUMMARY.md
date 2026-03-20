@@ -1,7 +1,7 @@
 # FlexClaude Terminal - Architecture Summary
 
 ## Overview
-FlexClaude Terminal is an Electron-based terminal emulator with a flexible, drag-and-drop layout system built on React and FlexLayout. It supports multiple terminals, editors, and file managers in a customizable tabbed interface.
+FlexClaude Terminal is an Electron-based terminal emulator with a flexible, drag-and-drop layout system built on React and FlexLayout. It supports multiple terminals, editors, and spreadsheets in a customizable tabbed interface.
 
 ## Core Architecture
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ShellButton from './ShellButton.jsx';
 
-const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTerminal, layoutRef, terminalCounter, editorCounter, fileManagerCounter, onUpdateCounters, onStartDrag, onShellDragStart }) => {
+const TopBar = ({ onAddTerminal, onAddEditor, onAddSpreadsheet, onAddSplitTerminal, layoutRef, terminalCounter, editorCounter, spreadsheetCounter, onUpdateCounters, onStartDrag, onShellDragStart }) => {
   const [draggedComponent, setDraggedComponent] = useState(null);
   const [availableShells, setAvailableShells] = useState([]);
   const lastDragEventRef = useRef(null);
@@ -36,10 +36,10 @@ const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTermin
       description: 'Monaco Editor Component'
     },
     {
-      type: 'filemanager',
-      name: 'file manager',
-      icon: '📁',
-      description: 'File Manager Component'
+      type: 'spreadsheet',
+      name: 'spreadsheet',
+      icon: '📊',
+      description: 'Spreadsheet Component'
     }
   ];
 
@@ -56,7 +56,7 @@ const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTermin
       (terminalCounter + 1) :
       componentType.type === 'editor' ?
       (editorCounter + 1) :
-      (fileManagerCounter + 1);
+      (spreadsheetCounter + 1);
     
     const tabJson = {
       type: "tab",
@@ -94,8 +94,8 @@ const TopBar = ({ onAddTerminal, onAddEditor, onAddFileManager, onAddSplitTermin
       onAddTerminal();
     } else if (componentType.type === 'editor') {
       onAddEditor();
-    } else if (componentType.type === 'filemanager') {
-      onAddFileManager();
+    } else if (componentType.type === 'spreadsheet') {
+      onAddSpreadsheet();
     }
   };
 
