@@ -37,10 +37,17 @@ No dedicated test framework is currently configured. The project mentions Playwr
 ### File Structure and Naming
 ```
 src/
-├── components/     # PascalCase with .jsx extension (TerminalComponent.jsx)
+├── components/     # PascalCase with .jsx extension
+│   ├── TerminalComponent.jsx
+│   ├── EditorComponent.jsx
+│   ├── SpreadsheetComponent.jsx  # @fortune-sheet/react based spreadsheet
+│   ├── TopBar.jsx                # Collapsible toolbar (Ctrl+T to toggle)
+│   ├── ShellButton.jsx           # Draggable shell-selector button
+│   └── TestDragButton.jsx        # Drag-and-drop testing helper
 ├── hooks/         # camelCase with .js extension (useFocusManager.js)
 ├── scss/          # snake_case with .scss extension
-├── *.js           # Main process files, utilities
+├── shellConfig.js # Platform shell definitions and validation helpers
+├── *.js           # Electron main process utilities
 └── *.jsx          # React entry points
 ```
 
@@ -256,16 +263,25 @@ if (!model) return null;
 ```
 
 #### Component Factory Pattern
+All heavy components are wrapped in `React.lazy` + `Suspense`. The factory passes the tab config through so components receive shell/editor/spreadsheet state:
+
 ```javascript
 const factory = node => {
   const component = node.getComponent();
   const id = node.getId();
+  const config = node.getConfig();
 
   switch (component) {
     case 'terminal':
-      return <TerminalComponent key={id} terminalId={id} />;
+      return (
+        <Suspense fallback={<div className="terminal-container" />}>
+          <TerminalComponent key={id} terminalId={id} shellId={config?.shellId} ... />
+        </Suspense>
+      );
     case 'editor':
-      return <EditorComponent key={id} editorId={id} />;
+      return <Suspense ...><EditorComponent key={id} editorId={id} ... /></Suspense>;
+    case 'spreadsheet':
+      return <Suspense ...><SpreadsheetComponent key={id} spreadsheetId={id} ... /></Suspense>;
     default:
       return <div>Unknown component: {component}</div>;
   }
@@ -292,8 +308,8 @@ const openTerminal = () => {
 
 #### Terminal Lifecycle
 ```javascript
-// 1. Create terminal in main process
-await window.electronAPI.createTerminal(terminalId);
+// 1. Create terminal in main process (shellId is optional; falls back to system default)
+await window.electronAPI.createTerminal(terminalId, shellId);
 
 // 2. Set up input handling
 const inputDisposable = terminal.onData((data) => {
@@ -307,6 +323,15 @@ return () => {
   terminal.dispose();
 };
 ```
+
+### Shell Management
+
+Shell selection is handled by the `ShellManager` class in `main.js` and configured via `src/shellConfig.js`. The config file defines default shells per platform (Windows: cmd, powershell, wps, wsl; Unix: bash, zsh, fish, sh) and detects the user's system shell via `$SHELL`.
+
+When adding new shell-related features:
+- Add shell definitions to `shellConfig.js` (follow the existing structure with `id`, `name`, `executable`, `args`, `cwd`, `env`, `icon`)
+- Use `shell.id` as the stable identifier throughout (stored in tab config as `shellId`)
+- Retrieve available shells via `window.electronAPI.getAvailableShells()` in the frontend
 
 ### Styling with SCSS
 
@@ -423,11 +448,13 @@ The project includes comprehensive AI development guidelines in `.github/copilot
 
 - **Model Loading**: Layout model loads asynchronously from electron-store
 - **Terminal Sizing**: Use ResizeObserver and FitAddon for proper terminal dimensions
-- **Drag & Drop**: Implement `onExternalDrag` for external drag operations
-- **State Persistence**: Save layout JSON with embedded component state
+- **Drag & Drop**: Implement `onExternalDrag` for external drag operations; use a ref to cache drag data because `getData()` is blocked during `dragover`
+- **Shell Drag**: ShellButton uses `application/shellid` MIME type; shell ID is cached in `currentShellDragIdRef` during `dragstart`
+- **State Persistence**: Save layout JSON with embedded component state (editor content, spreadsheet data, shell IDs preserved in tab config)
 - **WebGL Fallback**: Always include try/catch for WebGL addon loading
 - **Event Cleanup**: Return cleanup functions from useEffect hooks
 - **IPC Listeners**: Store listener references for proper removal
-
-This guide ensures consistent code quality and maintains the architectural integrity of the FlexClaude Terminal application.</content>
+- **Spreadsheet Resize**: Dispatch synthetic `window resize` event to notify fortune-sheet of panel size changes
+- **Lazy Loading**: All heavy components use `React.lazy` + `Suspense`; provide a matching fallback `<div className="...-container" />`
+- **Terminal Auto-close**: `onProcessExit` prop on TerminalComponent triggers `Actions.deleteTab` in App.jsx when the PTY exits</content>
 <parameter name="filePath">C:\dev\AI\FlexClaude2\AGENTS.md
