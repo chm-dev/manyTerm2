@@ -5,6 +5,7 @@ const pty = require('@lydell/node-pty');
 const registerGlobalShortcuts = require('./globalShortcuts');
 const { getBounds } = require('./windowUtils');
 const shellConfigModule = require('./shellConfig');
+const toggleAnimation = require('./toggleAnimation');
 
 let mainWindow;
 const terminals = new Map();
@@ -108,6 +109,7 @@ function createWindow() {
     height: bounds.height,
     x: bounds.x,
     y: bounds.y,
+    show: false,
     frame: false,
     transparent: true,
     acrylic: true,
@@ -167,6 +169,11 @@ app.whenReady().then(async () => {
   shellManager = new ShellManager(store);
 
   createWindow();
+
+  // Show window on startup unless --hidden flag is provided
+  if (!process.argv.includes('--hidden')) {
+    toggleAnimation(mainWindow, true);
+  }
 });
 
 function killAllTerminals() {
@@ -231,13 +238,17 @@ ipcMain.handle('create-terminal', (event, terminalId, shellId) => {
 
   terminal.onData(data => {
     console.log('Terminal data:', terminalId, data);
-    mainWindow.webContents.send('terminal-data', terminalId, data);
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('terminal-data', terminalId, data);
+    }
   });
 
   terminal.onExit(() => {
     console.log('Terminal exited:', terminalId);
     terminals.delete(terminalId);
-    mainWindow.webContents.send('terminal-exit', terminalId);
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('terminal-exit', terminalId);
+    }
   });
 
   return { success: true, existed: false };
