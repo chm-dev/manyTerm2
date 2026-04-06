@@ -315,7 +315,8 @@
 
 // Focus indicators for accessibility
 .terminal-container:focus-within,
-.editor-container:focus-within {
+.editor-container:focus-within,
+.spreadsheet-container:focus-within {
   outline       : 2px solid var(--accent-color);
   outline-offset: -2px;
 }
@@ -350,6 +351,113 @@
   width     : 100%;
   overflow  : hidden;
   background: var(--bg-primary);
+
+  .fortune-container,
+  .fortune-sheet-container,
+  .fortune-workarea,
+  .fortune-col-body,
+  .fortune-sheet-area,
+  .fortune-fx-editor,
+  .luckysheet-sheet-area,
+  #luckysheet-bottom-pager {
+    background: var(--bg-primary) !important;
+    color     : var(--text-primary) !important;
+  }
+
+  .fortune-row-header,
+  .fortune-col-header,
+  .fortune-col-header-hover,
+  .fortune-col-header-selected,
+  .fortune-left-top,
+  .fortune-toolbar,
+  .fortune-name-box,
+  .fortune-fx-input,
+  .fortune-fx-input-container,
+  .fortune-name-box-container,
+  .luckysheet-sheet-area,
+  #luckysheet-bottom-pager,
+  .luckysheet-sheet-area div.luckysheet-sheets-item,
+  .luckysheet-sheet-area div.luckysheet-sheets-item-active,
+  .fortune-sheettab-container .boundary {
+    background   : var(--bg-secondary) !important;
+    color        : var(--text-primary) !important;
+    border-color : var(--border-color) !important;
+  }
+
+  .luckysheet-sheet-area div.luckysheet-sheets-item:hover,
+  .luckysheet-sheet-area div.luckysheet-sheets-item-active:hover,
+  .fortune-toolbar-button:hover,
+  .fortune-toolbar-combo:hover,
+  .fortune-toolbar-combo-arrow:hover,
+  .fortune-toolbar-select-option:hover,
+  .fortune-zoom-ratio-item:hover,
+  .luckysheet-cols-menu .luckysheet-cols-menuitem:hover,
+  .luckysheet-cols-menu .luckysheet-cols-menuitem-hover {
+    background: var(--hover-bg) !important;
+    color     : var(--text-primary) !important;
+  }
+
+  .fortune-toolbar-divider,
+  .fortune-toolbar-menu-divider,
+  .fortune-context-menu-divider {
+    background: var(--border-color) !important;
+  }
+
+  .fortune-toolbar-select,
+  .fortune-toolbar-color-picker,
+  .fortune-toolbar-more-container,
+  .fortune-zoom-ratio-menu,
+  .fortune-context-menu,
+  .luckysheet-formula-search-c,
+  .luckysheet-formula-help-c {
+    background  : var(--bg-secondary) !important;
+    color       : var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  .luckysheet-cols-menu .luckysheet-cols-menuitem,
+  .luckysheet-cols-menu .luckysheet-cols-menuitem .luckysheet-cols-menuitem-content,
+  .fortune-menuitem-row,
+  .fortune-toolbar-subtext,
+  .luckysheet-sheet-area div.luckysheet-sheets-item .luckysheet-sheets-item-menu,
+  .fortune-col-header,
+  .fortune-row-header {
+    color: var(--text-secondary) !important;
+  }
+
+  .luckysheet-cell-input,
+  .luckysheet-input-box-inner,
+  .fortune-name-box,
+  .fortune-fx-input,
+  .luckysheet-sheet-area
+    div.luckysheet-sheets-item
+    .luckysheet-sheets-item-name[contenteditable='true'] {
+    background  : var(--bg-primary) !important;
+    color       : var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  .luckysheet-formula-text-color,
+  .luckysheet-formula-text-string {
+    color: var(--text-primary) !important;
+  }
+
+  .luckysheet-sheet-area
+    div.luckysheet-sheets-item
+    .luckysheet-sheets-item-name[contenteditable='true']:focus,
+  .fortune-name-box:focus,
+  .fortune-fx-input:focus,
+  .luckysheet-input-box-inner:focus {
+    border-color: var(--accent-color) !important;
+    box-shadow  : 0 0 0 1px color-mix(in srgb, var(--accent-color) 45%, transparent) !important;
+    outline     : none !important;
+  }
+
+  // Fortune Sheet renders cells to canvas; invert this layer for dark cell/background rendering.
+  .fortune-sheet-canvas,
+  .fortune-sheet-canvas-placeholder {
+    filter: invert(1) hue-rotate(180deg);
+  }
 
   // Customize scrollbars to match our theme
   ::-webkit-scrollbar {
