@@ -358,7 +358,7 @@
   --sheet-hover          : color-mix(in srgb, var(--hover-bg) 88%, var(--bg-secondary));
   --sheet-border         : color-mix(in srgb, var(--border-color) 82%, var(--bg-primary));
   --sheet-indicator-bg   : color-mix(in srgb, var(--sheet-header-bg) 90%, var(--accent-color));
-  --sheet-indicator-line : color-mix(in srgb, var(--sheet-border) 78%, var(--accent-color));
+  --sheet-indicator-line : color-mix(in srgb, var(--sheet-border) 85%, var(--accent-color));
   --sheet-text-strong    : var(--text-primary);
   --sheet-text-muted     : color-mix(in srgb, var(--text-secondary) 58%, var(--text-primary));
   --sheet-shadow-soft    : 0 6px 18px color-mix(in srgb, var(--bg-primary) 72%, transparent);
@@ -399,7 +399,7 @@
   .fortune-row-header,
   .fortune-col-header,
   .fortune-left-top {
-    background: var(--sheet-header-bg) !important;
+    background: var(--sheet-elevated) !important;
   }
 
   .fortune-toolbar,
