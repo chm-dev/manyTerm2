@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { Workbook } from '@fortune-sheet/react';
 import '@fortune-sheet/react/dist/index.css';
 
+const DEFAULT_SHEET_FONT_SIZE = 12;
+
 // Convert fortune-sheet's internal 2D data array back to the flat celldata format
 // that fortune-sheet uses for initialization ({r, c, v} entries).
 const dataToCelldata = (data) => {
@@ -166,6 +168,7 @@ const SpreadsheetComponent = ({
       <Workbook
         ref={workbookRef}
         data={initialDataRef.current}
+        defaultFontSize={DEFAULT_SHEET_FONT_SIZE}
         onOp={scheduleWorkbookPersist}
       />
     </div>

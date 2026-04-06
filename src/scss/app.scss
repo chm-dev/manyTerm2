@@ -352,6 +352,18 @@
   overflow  : hidden;
   background: var(--bg-primary);
 
+  --sheet-surface        : color-mix(in srgb, var(--bg-secondary) 86%, var(--bg-primary));
+  --sheet-elevated       : color-mix(in srgb, var(--bg-secondary) 72%, var(--bg-primary));
+  --sheet-header-bg      : color-mix(in srgb, var(--bg-secondary) 90%, var(--text-primary));
+  --sheet-hover          : color-mix(in srgb, var(--hover-bg) 88%, var(--bg-secondary));
+  --sheet-border         : color-mix(in srgb, var(--border-color) 82%, var(--bg-primary));
+  --sheet-indicator-bg   : color-mix(in srgb, var(--sheet-header-bg) 90%, var(--accent-color));
+  --sheet-indicator-line : color-mix(in srgb, var(--sheet-border) 78%, var(--accent-color));
+  --sheet-text-strong    : var(--text-primary);
+  --sheet-text-muted     : color-mix(in srgb, var(--text-secondary) 58%, var(--text-primary));
+  --sheet-shadow-soft    : 0 6px 18px color-mix(in srgb, var(--bg-primary) 72%, transparent);
+  --sheet-shadow-inset   : inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent);
+
   .fortune-container,
   .fortune-sheet-container,
   .fortune-workarea,
@@ -360,8 +372,8 @@
   .fortune-fx-editor,
   .luckysheet-sheet-area,
   #luckysheet-bottom-pager {
-    background: var(--bg-primary) !important;
-    color     : var(--text-primary) !important;
+    background: var(--sheet-surface) !important;
+    color     : var(--sheet-text-strong) !important;
   }
 
   .fortune-row-header,
@@ -379,9 +391,57 @@
   .luckysheet-sheet-area div.luckysheet-sheets-item,
   .luckysheet-sheet-area div.luckysheet-sheets-item-active,
   .fortune-sheettab-container .boundary {
-    background   : var(--bg-secondary) !important;
-    color        : var(--text-primary) !important;
-    border-color : var(--border-color) !important;
+    background   : var(--sheet-elevated) !important;
+    color        : var(--sheet-text-strong) !important;
+    border-color : var(--sheet-border) !important;
+  }
+
+  .fortune-row-header,
+  .fortune-col-header,
+  .fortune-left-top {
+    background: var(--sheet-header-bg) !important;
+  }
+
+  .fortune-toolbar,
+  .fortune-fx-editor,
+  .luckysheet-sheet-area {
+    border-bottom: 1px solid var(--sheet-border) !important;
+    box-shadow   : var(--sheet-shadow-inset);
+  }
+
+  .fortune-col-header {
+    border-bottom: 1px solid color-mix(in srgb, var(--sheet-border) 86%, white) !important;
+  }
+
+  .fortune-row-header {
+    border-right: 1px solid color-mix(in srgb, var(--sheet-border) 86%, white) !important;
+  }
+
+  .fortune-left-top {
+    border-right : 1px solid color-mix(in srgb, var(--sheet-border) 86%, white) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--sheet-border) 86%, white) !important;
+  }
+
+  .fortune-col-header-selected,
+  .fortune-row-header-selected {
+    background-color: var(--sheet-indicator-bg) !important;
+    color           : var(--sheet-text-muted) !important;
+  }
+
+  .fortune-col-header-selected {
+    border-bottom: 1px solid var(--sheet-indicator-line) !important;
+  }
+
+  .fortune-row-header-selected {
+    border-right: 1px solid var(--sheet-indicator-line) !important;
+  }
+
+  .fortune-toolbar-button,
+  .fortune-toolbar-combo,
+  .fortune-sheettab-button,
+  .fortune-zoom-button {
+    border-radius: 6px;
+    transition   : background-color 0.16s ease, color 0.16s ease;
   }
 
   .luckysheet-sheet-area div.luckysheet-sheets-item:hover,
@@ -393,14 +453,22 @@
   .fortune-zoom-ratio-item:hover,
   .luckysheet-cols-menu .luckysheet-cols-menuitem:hover,
   .luckysheet-cols-menu .luckysheet-cols-menuitem-hover {
-    background: var(--hover-bg) !important;
-    color     : var(--text-primary) !important;
+    background: var(--sheet-hover) !important;
+    color     : var(--sheet-text-strong) !important;
+  }
+
+  .fortune-toolbar-button:active,
+  .fortune-toolbar-combo:active,
+  .fortune-toolbar-combo-arrow:active,
+  .fortune-sheettab-button:active,
+  .fortune-zoom-button:active {
+    background: color-mix(in srgb, var(--sheet-hover) 84%, var(--bg-primary)) !important;
   }
 
   .fortune-toolbar-divider,
   .fortune-toolbar-menu-divider,
   .fortune-context-menu-divider {
-    background: var(--border-color) !important;
+    background: var(--sheet-border) !important;
   }
 
   .fortune-toolbar-select,
@@ -410,9 +478,10 @@
   .fortune-context-menu,
   .luckysheet-formula-search-c,
   .luckysheet-formula-help-c {
-    background  : var(--bg-secondary) !important;
-    color       : var(--text-primary) !important;
-    border-color: var(--border-color) !important;
+    background  : var(--sheet-elevated) !important;
+    color       : var(--sheet-text-strong) !important;
+    border      : 1px solid var(--sheet-border) !important;
+    box-shadow  : var(--sheet-shadow-soft) !important;
   }
 
   .luckysheet-cols-menu .luckysheet-cols-menuitem,
@@ -422,7 +491,7 @@
   .luckysheet-sheet-area div.luckysheet-sheets-item .luckysheet-sheets-item-menu,
   .fortune-col-header,
   .fortune-row-header {
-    color: var(--text-secondary) !important;
+    color: var(--sheet-text-muted) !important;
   }
 
   .luckysheet-cell-input,
@@ -432,14 +501,25 @@
   .luckysheet-sheet-area
     div.luckysheet-sheets-item
     .luckysheet-sheets-item-name[contenteditable='true'] {
-    background  : var(--bg-primary) !important;
-    color       : var(--text-primary) !important;
-    border-color: var(--border-color) !important;
+    background  : color-mix(in srgb, var(--bg-primary) 92%, var(--bg-secondary)) !important;
+    color       : var(--sheet-text-strong) !important;
+    border-color: var(--sheet-border) !important;
   }
 
   .luckysheet-formula-text-color,
   .luckysheet-formula-text-string {
-    color: var(--text-primary) !important;
+    color: var(--sheet-text-strong) !important;
+  }
+
+  .luckysheet-sheet-area div.luckysheet-sheets-item {
+    border-top-left-radius : 6px;
+    border-top-right-radius: 6px;
+  }
+
+  .luckysheet-sheet-area div.luckysheet-sheets-item-active {
+    background   : color-mix(in srgb, var(--sheet-hover) 76%, var(--sheet-elevated)) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-color) 68%, var(--sheet-border)) !important;
+    color        : var(--sheet-text-strong) !important;
   }
 
   .luckysheet-sheet-area
@@ -456,7 +536,14 @@
   // Fortune Sheet renders cells to canvas; invert this layer for dark cell/background rendering.
   .fortune-sheet-canvas,
   .fortune-sheet-canvas-placeholder {
-    filter: invert(1) hue-rotate(180deg);
+    filter: invert(1) hue-rotate(180deg) brightness(1.08) contrast(1.22) saturate(0.9);
+  }
+
+  // Row/column bars are canvas-rendered too; tune separately so separators remain visible.
+  .fortune-col-header canvas,
+  .fortune-row-header canvas {
+    filter : none !important;
+    opacity: 0.88 !important;
   }
 
   // Customize scrollbars to match our theme
